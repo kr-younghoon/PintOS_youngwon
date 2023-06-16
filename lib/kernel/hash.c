@@ -87,7 +87,7 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
 /* Inserts NEW into hash table H and returns a null pointer, if
    no equal element is already in the table.
    If an equal element is already in the table, returns it
-   without inserting NEW. */
+   without inserting NEW. 해시 테이블에 Element 삽입*/
 struct hash_elem *
 hash_insert (struct hash *h, struct hash_elem *new) {
 	struct list *bucket = find_bucket (h, new);
@@ -118,7 +118,8 @@ hash_replace (struct hash *h, struct hash_elem *new) {
 }
 
 /* Finds and returns an element equal to E in hash table H, or a
-   null pointer if no equal element exists in the table. */
+   null pointer if no equal element exists in the table. 
+   해시 테이블에서 element 검색*/
 struct hash_elem *
 hash_find (struct hash *h, struct hash_elem *e) {
 	return find_elem (h, find_bucket (h, e), e);
@@ -130,7 +131,8 @@ hash_find (struct hash *h, struct hash_elem *e) {
 
    If the elements of the hash table are dynamically allocated,
    or own resources that are, then it is the caller's
-   responsibility to deallocate them. */
+   responsibility to deallocate them. 
+   해시 테이블에서 Element 제거 */
 struct hash_elem *
 hash_delete (struct hash *h, struct hash_elem *e) {
 	struct hash_elem *found = find_elem (h, find_bucket (h, e), e);

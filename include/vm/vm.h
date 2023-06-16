@@ -2,13 +2,19 @@
 #define VM_VM_H
 #include <stdbool.h>
 #include "threads/palloc.h"
+#include "include/lib/kernel/hash.h"
 
+
+/* 한 페이지는 swap in, swap out, 그리고 페이지 삭제와 같은 여러 동작을 수행한다. */
 enum vm_type {
-	/* page not initialized */
+	/* page not initialized(페이지가 초기화 X) */
 	VM_UNINIT = 0,
-	/* page not related to the file, aka anonymous page */
+	/* page not related to the file, aka anonymous page
+	 * (페이지가 파일로 relate되지 않았을떄, a.k.a anonymous page)
+	 */
 	VM_ANON = 1,
-	/* page that realated to the file */
+	/* page that realated to the file 
+		(파일과 관련된 페이지Z)*/
 	VM_FILE = 2,
 	/* page that hold the page cache, for project 4 */
 	VM_PAGE_CACHE = 3,
@@ -46,6 +52,7 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
+	struct hash_elem hash_elem;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -65,11 +72,10 @@ struct frame {
 	struct page *page;
 };
 
-/* The function table for page operations.
- * This is one way of implementing "interface" in C.
- * Put the table of "method" into the struct's member, and
- * call it whenever you needed. */
-struct page_operations {
+/* 이 구조체는 3개의 함수 포인터를 포함한 하나의 함수 테이블
+ * page operations는 include/vm/vm.h 에 정의되어 있습니다.
+ */
+struct page_operations { 
 	bool (*swap_in) (struct page *, void *);
 	bool (*swap_out) (struct page *);
 	void (*destroy) (struct page *);
@@ -85,6 +91,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+	struct hash spt_hash;
 };
 
 #include "threads/thread.h"

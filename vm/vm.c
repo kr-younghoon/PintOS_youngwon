@@ -60,16 +60,21 @@ err:
 	return false;
 }
 
-/* Find VA from spt and return page. On error, return NULL. */
+/* (수정 전, 2)Find VA from spt and return page. On error, return NULL. 
+ * SPT에서 가상 주소(VA)를 찾고 페이지를 반환합니다. 오류가 발생한 경우 NULL을 반환합니다.
+ * (GITBOOK) 인자로 넘겨진 SPT에서로부터 va와 대응되는 페이지 구조체를 찾아서 반환. 실패했을 경우 NULL return
+ */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function. */
-
+	
 	return page;
 }
 
-/* Insert PAGE into spt with validation. */
+/* (수정 전, 3) Insert PAGE into spt with validation. 
+ * 인자로 주어진 SPT에 페이지 구조체를 삽입한다. 이 함수에서 주어진 SPT에서 VA가 존재하지 않는지 검사.
+ */
 bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
@@ -171,9 +176,17 @@ vm_do_claim_page (struct page *page) {
 	return swap_in (page, frame->kva);
 }
 
-/* Initialize new supplemental page table */
+/* (수정 중, 1) Initialize new supplemental page table 
+ * 새로운 SPT를 초기화. - 보조 페이지 테이블을 어떤 자료구조로 구현할지 선택해야함. -> 해쉬테이블
+ * userprog/process.c의 initd 함수로 새로운 프로세스가 시작하거나, 
+ * process.c의 __do_fork로 자식 프로세스가 생성될 때 위의 함수가 호출된다.
+ */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	/* hash_init()으로 해시테이블 초기화 */
+	hash_init(spt, page_hash, page_less, NULL);
+	/* 인자로 해시 테이블(초기화할 테이블)과 vm_hash_func(해시값을 구해주는 함수의 포인터)과 
+	vm_less_func(해시 element들의 크기를 비교해주는 함수의 포인터) 사용 */
 }
 
 /* Copy supplemental page table from src to dst */
@@ -188,3 +201,21 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 }
+
+/* Returns a hash value for page p. */
+unsigned
+page_hash (const struct hash_elem *p_, void *aux UNUSED) {
+  const struct page *p = hash_entry (p_, struct page, hash_elem);
+  return hash_bytes (&p->va, sizeof p->va);
+}
+
+/* Returns true if page a precedes page b. */
+bool
+page_less (const struct hash_elem *a_,
+           const struct hash_elem *b_, void *aux UNUSED) {
+  const struct page *a = hash_entry (a_, struct page, hash_elem);
+  const struct page *b = hash_entry (b_, struct page, hash_elem);
+
+  return a->va < b->va;
+}
+
