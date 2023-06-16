@@ -68,8 +68,18 @@ struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function. */
+	// 인자로 받은 vaddr 에 해당하는 vm_entry를 검색 후 반환
+	// ㄴ 가상 메모리 주소에 해당하는 페이지 번호 추출 (pg_round_down())
+	// ㄴ hash_find() 함수를 이용하여 vm_entry 검색 후 반환
+
+	page = malloc(sizeof(struct page));
+	struct hash_elem *e;
 	
-	return page;
+	// va에 해당하는 hash_elem search
+	page -> va = va;
+	e = hash_find(&spt, &page->hash_elem);
+	// 있으면 e에 해당하는 페이지 반환
+	return e != NULL ? hash_entry(e, struct page, hash_elem):NULL;
 }
 
 /* (수정 전, 3) Insert PAGE into spt with validation. 
