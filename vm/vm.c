@@ -68,7 +68,7 @@ struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function. */
-	// 인자로 받은 vaddr 에 해당하는 vm_entry를 검색 후 반환
+	// 인자로 받은 vaddr(va) 에 해당하는 vm_entry를 검색 후 반환
 	// ㄴ 가상 메모리 주소에 해당하는 페이지 번호 추출 (pg_round_down())
 	// ㄴ hash_find() 함수를 이용하여 vm_entry 검색 후 반환
 
