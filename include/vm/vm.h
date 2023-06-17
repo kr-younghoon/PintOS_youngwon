@@ -53,6 +53,7 @@ struct page {
 
 	/* Your implementation */
 	struct hash_elem hash_elem;
+	bool writable;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -69,7 +70,7 @@ struct page {
 /* The representation of "frame"
  * kva는 커널 가상 주소,
  * page는 페이지 구조체를 담기 위한 멤버이다.
- * 프레임 관리 인터페이스를 구현하는 과정에서 다른 멤버들을 추가할 수 있습니다.*/
+ * 프레임 관리 인터페이스를 구현하는 과정에서 다른 멤버들을 추가할 수 있습니다. */
 struct frame {
 	void *kva;
 	struct page *page;

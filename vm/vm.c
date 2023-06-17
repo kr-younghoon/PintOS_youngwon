@@ -133,8 +133,8 @@ vm_get_frame (void) {
 
 	// page 할당 실패 -> 나중에 swap_out 처리
 	if (kva == NULL)
-		PANIC("todo"); // 일단 PANIC으로 해당 케이스 처리. 
 	// PANIC -> OS를 중지시키고 소스 파일명 라인 번호 함수명 등의 정보와 함께 사용자 지정 메시지를 출력.
+		PANIC("todo"); // 일단 PANIC으로 해당 케이스 처리. 
 
 	// 유저 풀에서 페이지를 성공적으로 가져오면 프레임을 할당하고 프레임 구조체의 멤버들을 초기화한 후 프레임 반환!
 	frame = malloc(sizeof(struct frame)); // 프레임 할당
@@ -175,16 +175,29 @@ vm_dealloc_page (struct page *page) {
 	free (page);
 }
 
-/* Claim the page that allocate on VA. */
+/* Claim the page that allocate on VA.
+	VA에 할당된 페이지를 차지합니다.
+   ---
+   1. 인자로 주어진 va에 페이지를 할당.
+   2. 해당페이지에 프레임을 할당합니다.
+   3. 우선 한 페이지를 얻어야 하고,
+   4. return -> vm_do_claim_page(page);
+ */
 bool
 vm_claim_page (void *va UNUSED) {
 	struct page *page = NULL;
-	/* TODO: Fill this function */
-
+	/* TODO: spt에서 va에 해당하는 page Find */
+	page = spt_find_page(&thread_current() -> spt, va);
+	if (page == NULL)
+		return false;
 	return vm_do_claim_page (page);
 }
 
-/* Claim the PAGE and set up the mmu. */
+/* (수정, 7) Claim the PAGE and set up the mmu. 
+ * 페이지를 요청하고(mm를 확보하고) MMU를 설정합니다.
+ * 1. 인자로 주어진 page에 물리 메모리 할당.
+ * 2. vm_get_frame 함수를 호출하여 프레임 1을 얻는다. (이미 스켈레톤 코드로 구현됨)
+ * 3. MMU SET, VA와 PA를 매핑한 정보를 페이지 테이블에 추가해야 한다. */
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
@@ -193,7 +206,10 @@ vm_do_claim_page (struct page *page) {
 	frame->page = page;
 	page->frame = frame;
 
-	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+	/* TODO: 페이지 테이블 항목을 삽입하여 페이지의 가상 주소(VA)를 프레임의 물리 주소(PA)에 매핑합니다.*/
+	struct thread *current = thread_current();
+	pml4_set_page(current->pml4, page->va, frame->kva, page->writable);
+	
 
 	return swap_in (page, frame->kva);
 }
@@ -224,14 +240,14 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	 * TODO: writeback all the modified contents to the storage. */
 }
 
-/* Returns a hash value for page p. */
+/* (수정, 2)Returns a hash value for page p. */
 unsigned
 page_hash (const struct hash_elem *p_, void *aux UNUSED) {
   const struct page *p = hash_entry (p_, struct page, hash_elem);
   return hash_bytes (&p->va, sizeof p->va);
 }
 
-/* Returns true if page a precedes page b. */
+/* (수정, 3)Returns true if page a precedes page b. */
 bool
 page_less (const struct hash_elem *a_,
            const struct hash_elem *b_, void *aux UNUSED) {
