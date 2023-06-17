@@ -60,7 +60,7 @@ err:
 	return false;
 }
 
-/* (수정 전, 2)Find VA from spt and return page. On error, return NULL. 
+/* (수정, 4)Find VA from spt and return page. On error, return NULL. 
  * SPT에서 가상 주소(VA)를 찾고 페이지를 반환합니다. 오류가 발생한 경우 NULL을 반환합니다.
  * (GITBOOK) 인자로 넘겨진 SPT에서로부터 va와 대응되는 페이지 구조체를 찾아서 반환. 실패했을 경우 NULL return
  */
@@ -82,7 +82,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	return e != NULL ? hash_entry(e, struct page, hash_elem):NULL;
 }
 
-/* (수정 전, 3) Insert PAGE into spt with validation. 
+/* (수정, 4) Insert PAGE into spt with validation. 
  * 인자로 주어진 SPT에 페이지 구조체를 삽입한다. 이 함수에서 주어진 SPT에서 VA가 존재하지 않는지 검사.
  */
 bool
@@ -119,14 +119,22 @@ vm_evict_frame (void) {
 	return NULL;
 }
 
-/* palloc() and get frame. If there is no available page, evict the page
- * and return it. This always return valid address. That is, if the user pool
- * memory is full, this function evicts the frame to get the available memory
- * space.*/
+/* (수정, 6)
+ * palloc() 및 프레임을 얻습니다. 
+ * 사용 가능한 페이지가 없는 경우 페이지를 대체하고 반환합니다. 
+ * 항상 유효한 주소를 반환합니다. 즉, 사용자 풀 메모리가 가득 찬 경우 
+ * 이 함수는 사용 가능한 메모리 공간을 얻기 위해 프레임을 대체합니다. */
 static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
+	//user pool에서 새로운 physical page를 가져온다. (palloc get page 함수를 호출.)
+	void *kva = palloc_get_page(PAL_USER);
+
+	// page 할당 실패 -> 나중에 swap_out 처리
+	if (kva == NULL)
+		PANIC("todo"); // 일단 PANIC으로 해당 케이스 처리. 
+	// PANIC -> OS를 중지시키고 소스 파일명 라인 번호 함수명 등의 정보와 함께 사용자 지정 메시지를 출력.
 
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
@@ -186,7 +194,7 @@ vm_do_claim_page (struct page *page) {
 	return swap_in (page, frame->kva);
 }
 
-/* (수정 중, 1) Initialize new supplemental page table 
+/* (수정, 1) Initialize new supplemental page table 
  * 새로운 SPT를 초기화. - 보조 페이지 테이블을 어떤 자료구조로 구현할지 선택해야함. -> 해쉬테이블
  * userprog/process.c의 initd 함수로 새로운 프로세스가 시작하거나, 
  * process.c의 __do_fork로 자식 프로세스가 생성될 때 위의 함수가 호출된다.
