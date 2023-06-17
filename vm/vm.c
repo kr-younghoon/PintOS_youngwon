@@ -1,6 +1,7 @@
 /* vm.c: Generic interface for virtual memory objects. */
 
 #include "threads/malloc.h"
+#include "threads/mmu.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
 
@@ -65,7 +66,15 @@ struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function. */
-
+	page->va = va;
+	/* hash_find : return hash_elem */
+	struct hash_elem *entry = hash_find(&spt, &page->hash_elem);
+	if (entry==NULL){
+		return NULL;
+	}
+	/* hash_entry : hash_elem pointer → struct pointer */
+	page = hash_entry(entry, struct page, hash_elem);
+	
 	return page;
 }
 
@@ -75,7 +84,8 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
 	int succ = false;
 	/* TODO: Fill this function. */
-
+	if (hash_insert(spt,&page->hash_elem)!=NULL)
+		succ = true;
 	return succ;
 }
 
@@ -112,6 +122,12 @@ static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
+	void *vaddr = palloc_get_page(PAL_USER);
+	if (vaddr==NULL)
+		PANIC("todo");	/* page allocation failure */
+	/* 할당 + 초기화 */
+	frame = malloc(sizeof(struct frame));
+	frame->kva = vaddr;
 
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
@@ -153,6 +169,8 @@ bool
 vm_claim_page (void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function */
+	/* va → page */
+	page = spt_find_page(thread_current()->spt, va);
 
 	return vm_do_claim_page (page);
 }
@@ -167,13 +185,26 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+	pml4_set_page(thread_current()->pml4, page->va, frame->kva, 0);
 
 	return swap_in (page, frame->kva);
+}
+
+static unsigned hash_hash (const struct hash_elem *e, void *aux){
+	const struct page *p = hash_entry(e, struct page, hash_elem);
+	return hash_bytes (&p->va, sizeof p->va);
+}
+static bool hash_less (const struct hash_elem *a, const struct hash_elem *b, void *aux){
+	/* Returns true if a is less than b (compare va) */
+	const struct page *a_ = hash_entry(a,struct page, hash_elem);
+	const struct page *b_ = hash_entry(b,struct page, hash_elem);
+	return a_->va < b_->va;
 }
 
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	hash_init(spt, hash_hash, hash_less, NULL);
 }
 
 /* Copy supplemental page table from src to dst */
