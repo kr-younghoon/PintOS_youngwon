@@ -136,6 +136,10 @@ vm_get_frame (void) {
 		PANIC("todo"); // 일단 PANIC으로 해당 케이스 처리. 
 	// PANIC -> OS를 중지시키고 소스 파일명 라인 번호 함수명 등의 정보와 함께 사용자 지정 메시지를 출력.
 
+	// 유저 풀에서 페이지를 성공적으로 가져오면 프레임을 할당하고 프레임 구조체의 멤버들을 초기화한 후 프레임 반환!
+	frame = malloc(sizeof(struct frame)); // 프레임 할당
+	frame -> kva = kva; // 프레임 멤버 초기화
+
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
 	return frame;
