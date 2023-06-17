@@ -171,7 +171,9 @@ vm_claim_page (void *va UNUSED) {
 	/* TODO: Fill this function */
 	/* va → page */
 	page = spt_find_page(thread_current()->spt, va);
-
+	/* va에 해당하는 page를 찾을 수 없으면, false */
+	if (page == NULL)
+		return false;
 	return vm_do_claim_page (page);
 }
 
