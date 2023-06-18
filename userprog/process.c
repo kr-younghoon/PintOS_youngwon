@@ -635,13 +635,6 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		}
 		memset(kpage + page_read_bytes, 0, page_zero_bytes);
 
-		/* Add the page to the process's address space. */
-		if (!install_page(upage, kpage, writable))
-		{
-			printf("fail\n");
-			palloc_free_page(kpage);
-			return false;
-		}
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
@@ -732,10 +725,17 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
-		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, aux))
-			return false;
+		
+		/* page (malloc 사용) */
+		struct page *page = (struct page *)malloc(sizeof(struct page));
+		/* page memebers 설정 */
+		page->read_bytes = page_read_bytes;
+		page->zero_bytes = page_zero_bytes;
+		page->writable = writable;
+		page->ofs = ofs;
+		/* page -> hash table */
+		spt_insert_page(thread_current()->spt,page);
+		vm_alloc_page_with_initializer(0, page->va, writable, lazy_load_segment, NULL);
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
