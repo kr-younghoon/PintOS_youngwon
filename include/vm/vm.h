@@ -14,7 +14,7 @@ enum vm_type {
 	 */
 	VM_ANON = 1,
 	/* page that realated to the file 
-		(파일과 관련된 페이지Z)*/
+		(파일과 관련된 페이지)*/
 	VM_FILE = 2,
 	/* page that hold the page cache, for project 4 */
 	VM_PAGE_CACHE = 3,

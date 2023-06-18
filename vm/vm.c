@@ -37,30 +37,52 @@ static struct frame *vm_get_victim (void);
 static bool vm_do_claim_page (struct page *page);
 static struct frame *vm_evict_frame (void);
 
-/* Create the pending page object with initializer. If you want to create a
+/* (수정, 9)Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
- * `vm_alloc_page`. */
+ * `vm_alloc_page`. 
+ * 보류 중인 페이지 객체를 초기화하여 생성합니다. 
+ * 페이지를 생성하려면 이 함수나 vm_alloc_page를 통해 직접 생성하지 마십시오.
+ * page 구조체를 생성하고 적절한 초기화 함수를 설정한다.*/
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
-
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
 
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
-	/* Check wheter the upage is already occupied or not. */
+	/* Check wheter the upage is already occupied or not. 
+		upage(p를 할당할 가상 주소)가 이미 사용 중인지 확인합니다. */
 	if (spt_find_page (spt, upage) == NULL) {
 		/* TODO: Create the page, fetch the initialier according to the VM type,
-		 * TODO: and then create "uninit" page struct by calling uninit_new. You
-		 * TODO: should modify the field after calling the uninit_new. */
+		 * TODO: 1) 페이지를 생성하고, 2) VM_type 유형에 따라 초기화 함수를 가져오세요. */
+		struct page *p = (struct page *)malloc(sizeof(struct page));
+		bool (*page_initializer)(struct page *, enum vm_type, void *);
 
-		/* TODO: Insert the page into the spt. */
+		switch (VM_TYPE(type)) {
+			case VM_ANON: // 페이지가 파일로 related되지 않았을때 = anon page
+				page_initializer = anon_initializer;
+				break;
+			case VM_FILE: // 파일과 관련되었을 때
+				page_initializer = file_backed_initializer;
+				break;
+		}
+		 /* TODO: and then create "uninit" page struct by calling uninit_new. You
+		  * TODO: 3) 그리고 "uninit" 페이지 구조체를 호출하여 생성하세요. */
+		 uninit_new(p, upage, init, type, aux, page_initializer);
+		  
+		 /* TODO: should modify the field after calling the uninit_new. 
+		    uninit_new를 호출한 후에 필드를 수정해야 합니다. */
+		p->writable = writable;
+
+		/* TODO: Insert the page into the spt. 
+		 * 페이지를 spt에 삽입하십시오. */
+		return spt_insert_page(spt, p);
 	}
 err:
 	return false;
 }
 
-/* (수정, 4)Find VA from spt and return page. On error, return NULL. 
+/* (수정, 5)Find VA from spt and return page. On error, return NULL. 
  * SPT에서 가상 주소(VA)를 찾고 페이지를 반환합니다. 오류가 발생한 경우 NULL을 반환합니다.
  * (GITBOOK) 인자로 넘겨진 SPT에서로부터 va와 대응되는 페이지 구조체를 찾아서 반환. 실패했을 경우 NULL return
  */
@@ -88,8 +110,8 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
-	bool succ = hash_insert(&spt, &page->hash_elem) == NULL;
 	/* TODO: Fill this function. */
+	bool succ = hash_insert(&spt, &page->hash_elem) == NULL;
 	
 	return succ;
 }
