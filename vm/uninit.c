@@ -22,7 +22,10 @@ static const struct page_operations uninit_ops = {
 	.type = VM_UNINIT,
 };
 
-/* DO NOT MODIFY this function */
+/* (수정금지!)
+	uninit_new 함수에서는 매개변수로 받은 page 구조체를 uninit type으로 만든다.
+	(page 구조체는 uninit/anon/file/page_cache 중 한가지 타입을 가지는데, 
+	여기서는 uninit 타입으로 만드는 거니까 page 구조체에 uninit 필드가 생기는 것이다.) */
 void
 uninit_new (struct page *page, void *va, vm_initializer *init,
 		enum vm_type type, void *aux,

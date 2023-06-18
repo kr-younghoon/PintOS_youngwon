@@ -197,7 +197,7 @@ vm_dealloc_page (struct page *page) {
 	free (page);
 }
 
-/* Claim the page that allocate on VA.
+/* (수정, 8)Claim the page that allocate on VA.
 	VA에 할당된 페이지를 차지합니다.
    ---
    1. 인자로 주어진 va에 페이지를 할당.
