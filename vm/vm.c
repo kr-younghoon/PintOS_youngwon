@@ -67,7 +67,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		uninit_new(page, page->va, init, type, aux, initializer);
 		page->writable = writable;
 		/* TODO: Insert the page into the spt. */
-		spt_insert_page(spt,page);
+		return spt_insert_page(spt,page);
 	}
 err:
 	return false;
@@ -77,8 +77,9 @@ err:
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
+	page = (struct page *)malloc(sizeof(struct page));
 	/* TODO: Fill this function. */
-	page->va = va;
+	page->va = pg_round_down(va);
 	/* hash_find : return hash_elem */
 	struct hash_elem *entry = hash_find(spt, &page->hash_elem);
 	if (entry==NULL){
@@ -141,6 +142,7 @@ vm_get_frame (void) {
 	frame = malloc(sizeof(struct frame));
 	frame->kva = vaddr;
 
+	frame->page = NULL;
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
 	return frame;
@@ -165,7 +167,8 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	page = spt_find_page(spt,addr);
-
+	if (page == NULL)
+		return false;
 	return vm_do_claim_page (page);
 }
 
