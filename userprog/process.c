@@ -700,6 +700,18 @@ lazy_load_segment(struct page *page, void *aux)
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	struct lazy_load_arg *lazy_load_arg = (struct lazy_load_arg *)aux;
+
+	// 1) 파일의 position을 ofs으로 지정한다.
+	file_seek(lazy_load_arg->file, lazy_load_arg->ofs);
+	// 2) 파일을 read_bytes만큼 물리 프레임에 읽어 들인다.
+	if (file_read(lazy_load_arg->file, page->frame->kva, lazy_load_arg->read_bytes) != (int)(lazy_load_arg->read_bytes)) {
+		palloc_free_page(page->frame->kva);
+		return false;
+	}
+	// 3) 다 읽은 지점부터 zero_bytes만큼 0으로 채운다.
+	memset(page->frame->kva + lazy_load_arg->read_bytes, 0, lazy_load_arg->zero_bytes);
+	return true;
 }
 
 /* (수정, 10) 이 함수는 프로세스가 실행될 때, 실행 파일을 현재 스레드로 로드하는 함수인 load함수에서 호출된다.
