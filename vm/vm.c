@@ -233,7 +233,7 @@ vm_do_claim_page (struct page *page) {
 	pml4_set_page(current->pml4, page->va, frame->kva, page->writable);
 	
 
-	return swap_in (page, frame->kva);
+	return swap_in (page, frame->kva); // uninit_initialize
 }
 
 /* (수정, 1) Initialize new supplemental page table 

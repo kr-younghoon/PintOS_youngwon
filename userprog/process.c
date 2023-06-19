@@ -604,7 +604,8 @@ static bool install_page(void *upage, void *kpage, bool writable);
  * user process if WRITABLE is true, read-only otherwise.
  *
  * Return true if successful, false if a memory allocation error
- * or disk read error occurs. */
+ * or disk read error occurs.
+*/
 static bool
 load_segment(struct file *file, off_t ofs, uint8_t *upage,
 			 uint32_t read_bytes, uint32_t zero_bytes, bool writable)
@@ -701,20 +702,24 @@ lazy_load_segment(struct page *page, void *aux)
 	/* TODO: VA is available when calling this function. */
 }
 
-/* Loads a segment starting at offset OFS in FILE at address
- * UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
- * memory are initialized, as follows:
- *
- * - READ_BYTES bytes at UPAGE must be read from FILE
- * starting at offset OFS.
- *
- * - ZERO_BYTES bytes at UPAGE + READ_BYTES must be zeroed.
- *
- * The pages initialized by this function must be writable by the
- * user process if WRITABLE is true, read-only otherwise.
- *
- * Return true if successful, false if a memory allocation error
- * or disk read error occurs. */
+/* (수정, 10) 이 함수는 프로세스가 실행될 때, 실행 파일을 현재 스레드로 로드하는 함수인 load함수에서 호출된다.
+	-> 파일 내용을 upage에 로드하는 함수이다. 파일의 내용을 로드하기 위해서 upage를 할당할 page가 필요한데,
+	위에서 수정한 vm_alloc_page_with_initializer 함수를 호출해서 페이지를 생성한다.
+
+	Lazy Loading 을 사용해야 하므로, 여기서 바로 파일의 내용을 로드하지 않아야 한다.
+	그래서 page에 내용을 로드할 때 사용할 함수와 필요한 인자들을 넣어줘야 하는데,
+	vm_alloc_page_with_initializer 함수의 네 번째, 다섯 번째 인자가 각각 로드할 때
+	사용할 함수, 그리고 그 때 필요한 인자에 해당한다.
+
+	내용을 로드할 때 사용할 함수는 Lazy_load_segment를 사용하고, 인자는 직접 만들어서 넘겨줘야 한다.
+	lazy_load_segment에서 필요한 정보는 아래와 같다.
+	 - `file`          : 내용이 담긴 파일 객체
+	 - `ofs`           : 이 페이지에서 읽기 시작할 위치
+	 - `read_bytes`    : 이 페이지에서 읽어야 하는 바이트의 수
+	 - `zero_bytes`    : 이 페이지에서 read_bytes만큼 읽고 공간이 남아 0으로 채워야 하는 바이트 수
+	 - `lazy_load_arg` : 라는 구조체를 새로 정의해서 선언하고 안에 위 정보들을 담아서 vm_alloc_page_with_initializer 함수의 마지막 인자로 전달했다
+	
+	이제 page fault가 처음 발생했을 때, lazy_load_segment가 실행되고, lazy_load_arg가 인자로 사용되어 내용이 로딩될 것이다. */
 static bool
 load_segment(struct file *file, off_t ofs, uint8_t *upage,
 			 uint32_t read_bytes, uint32_t zero_bytes, bool writable)
@@ -732,15 +737,23 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		struct lazy_load_arg *lazy_load_arg = 
+			(struct lazy_load_arg *)malloc
+			(sizeof(struct lazy_load_arg));
+		lazy_load_arg->file = file;
+		lazy_load_arg->ofs = ofs;
+		lazy_load_arg->read_bytes = page_read_bytes;
+		lazy_load_arg->zero_bytes = page_zero_bytes;
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
 											writable, lazy_load_segment, aux))
 			return false;
+
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		ofs += page_read_bytes;
 	}
 	return true;
 }

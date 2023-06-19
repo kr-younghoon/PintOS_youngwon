@@ -46,13 +46,15 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 }
 
 /* Initalize the page on first fault */
+// 첫번째 페이지 폴트시 페이지를 초기화합니다.
 static bool
 uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
 
 	/* Fetch first, page_initialize may overwrite the values */
-	vm_initializer *init = uninit->init;
-	void *aux = uninit->aux;
+	// page_initializer 함수가 값을 덮어쓸 수 있으므로 이전에 가져온 값들을 먼저 저장해야 함
+	vm_initializer *init = uninit->init; // lazy_load_segment
+	void *aux = uninit->aux; // lazy_load_arg
 
 	/* TODO: You may need to fix this function. */
 	return uninit->page_initializer (page, uninit->type, kva) &&

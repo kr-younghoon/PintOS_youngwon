@@ -17,14 +17,17 @@ static const struct page_operations anon_ops = {
 	.type = VM_ANON,
 };
 
-/* Initialize the data for anonymous pages */
+/* 익명 페이지 서브시스템(하위 시스템)을 초기화힙니다. 
+	이 함수에서, 당신은 익명 페이지에 관련된 어떤 것이든 설정할 수 있습니다. */
 void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
 	swap_disk = NULL;
 }
 
-/* Initialize the file mapping */
+/* 이 함수는 처음으로 page→operation에 있는 익명 페이지에 대한 핸들러를 설정하여줍니다. 
+당신은 현재는 비어있는 구조체인 anon_page의 정보들을 업데이트할 필요가 있을 것입니다. 
+이 함수는 익명 페이지를 초기화하는데 사용됩니다.(예 - VM_ANON) */
 bool
 anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* Set up the handler */
