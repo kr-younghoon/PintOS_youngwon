@@ -49,7 +49,6 @@ bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
-
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
 	/* Check wheter the upage is already occupied or not. 
@@ -90,18 +89,17 @@ err:
  */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;
+	struct page page;
 	/* TODO: Fill this function. */
 	// 인자로 받은 vaddr(va) 에 해당하는 vm_entry를 검색 후 반환
 	// ㄴ 가상 메모리 주소에 해당하는 페이지 번호 추출 (pg_round_down())
 	// ㄴ hash_find() 함수를 이용하여 vm_entry 검색 후 반환
-
-	page = malloc(sizeof(struct page));
+ 
 	struct hash_elem *e;
 	
 	// va에 해당하는 hash_elem search
-	page -> va = va;
-	e = hash_find(&spt, &page->hash_elem);
+	page.va = va;
+	e = hash_find(&spt->spt_hash, &page.hash_elem);
 	// 있으면 e에 해당하는 페이지 반환
 	return e != NULL ? hash_entry(e, struct page, hash_elem):NULL;
 }
@@ -113,7 +111,7 @@ bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
 	/* TODO: Fill this function. */
-	bool succ = hash_insert(&spt, &page->hash_elem) == NULL;
+	bool succ = hash_insert(&spt->spt_hash, &page->hash_elem) == NULL;
 	
 	return succ;
 }
@@ -163,6 +161,7 @@ vm_get_frame (void) {
 	// 유저 풀에서 페이지를 성공적으로 가져오면 프레임을 할당하고 프레임 구조체의 멤버들을 초기화한 후 프레임 반환!
 	frame = malloc(sizeof(struct frame)); // 프레임 할당
 	frame -> kva = kva; // 프레임 멤버 초기화
+	frame->page = NULL;
 
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
@@ -195,10 +194,12 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
     if (is_kernel_vaddr(addr))
         return false;
 
+	void *vaddr = pg_round_down(addr);
+
     if (not_present) // 접근한 메모리의 physical page가 존재하지 않은 경우
     {
         /* TODO: Validate the fault */
-        page = spt_find_page(spt, addr);
+        page = spt_find_page(spt, vaddr);
         if (page == NULL)
             return false;
         if (write == 1 && page->writable == 0) // write 불가능한 페이지에 write 요청한 경우
@@ -251,9 +252,8 @@ vm_do_claim_page (struct page *page) {
 	/* TODO: 페이지 테이블 항목을 삽입하여 페이지의 가상 주소(VA)를 프레임의 물리 주소(PA)에 매핑합니다.*/
 	struct thread *current = thread_current();
 	pml4_set_page(current->pml4, page->va, frame->kva, page->writable);
-	
-
-	return swap_in (page, frame->kva); // uninit_initialize
+	bool success = swap_in (page, frame->kva);;
+	return  success;// uninit_initialize
 }
 /* (수정, 2)Returns a hash value for page p. */
 unsigned
@@ -280,7 +280,7 @@ page_less (const struct hash_elem *a_,
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	/* hash_init()으로 해시테이블 초기화 */
-	hash_init(&spt, page_hash, page_less, NULL);
+	hash_init(&spt->spt_hash, page_hash, page_less, NULL);
 	/* 인자로 해시 테이블(초기화할 테이블)과 vm_hash_func(해시값을 구해주는 함수의 포인터)과 
 	vm_less_func(해시 element들의 크기를 비교해주는 함수의 포인터) 사용 */
 }
