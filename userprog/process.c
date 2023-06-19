@@ -775,13 +775,20 @@ static bool
 setup_stack(struct intr_frame *if_)
 {
 	bool success = false;
+	// 스택은 아래로 성장하므로, USER_STACK에서 PGSIZE만큼 아래로 내린 지점에서 페이지를 생성한다.
 	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
 
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-
+	// 스택을 stack_bottom에 매핑하고 즉시 페이지를 할당합니다. 
+	// 성공하면 rsp를 적절히 설정합니다. 페이지를 스택으로 표시해야 합니다.
+	if(vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {// (type, upage, writable)
+		success = vm_claim_page(stack_bottom);
+		if (success)
+			if_ -> rsp = USER_STACK;
+	}
 	return success;
 }
 #endif /* VM */
