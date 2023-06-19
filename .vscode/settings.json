@@ -1,6 +1,10 @@
 {
     "files.associations": {
-        "*.inc": "c",
-        "syscall.h": "c"
+      "*.c": "c",
+      "*.h": "c",
+      "list.h": "c",
+      "synch.h": "c",
+      "process.h": "c",
+      "malloc.h": "c"
     }
-}
+  }

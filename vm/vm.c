@@ -54,7 +54,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-		struct page *page = (struct page *)palloc(sizeof(struct page));
+		struct page *page = (struct page *)malloc(sizeof(struct page));
 		bool (*initializer)(struct page *, enum vm_type, void *);
 		switch (type){
 			case VM_ANON:
@@ -80,7 +80,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	/* TODO: Fill this function. */
 	page->va = va;
 	/* hash_find : return hash_elem */
-	struct hash_elem *entry = hash_find(&spt, &page->hash_elem);
+	struct hash_elem *entry = hash_find(spt, &page->hash_elem);
 	if (entry==NULL){
 		return NULL;
 	}
@@ -164,6 +164,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
+	page = spt_find_page(spt,addr);
 
 	return vm_do_claim_page (page);
 }
@@ -182,7 +183,7 @@ vm_claim_page (void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function */
 	/* va → page */
-	page = spt_find_page(thread_current()->spt, va);
+	page = spt_find_page(&thread_current()->spt, va);
 	/* va에 해당하는 page를 찾을 수 없으면, false */
 	if (page == NULL)
 		return false;
@@ -199,8 +200,9 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable);
-
+	if (pml4_set_page(thread_current()->pml4, page->va, frame->kva, 1)==NULL)
+		return false;
+	
 	return swap_in (page, frame->kva);
 }
 

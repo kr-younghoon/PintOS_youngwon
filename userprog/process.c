@@ -234,6 +234,7 @@ int process_exec(void *f_name)
 
 	/* We first kill the current context */
 	process_cleanup();
+	supplemental_page_table_init(&thread_current()->spt);
 
 	/* ---------------추가한 부분------------- */
 	// parsing
@@ -686,12 +687,31 @@ install_page(void *upage, void *kpage, bool writable)
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
+struct vm_entry{
+	struct file *file;
+	off_t ofs;	 		/* 읽어야할 파일 오프셋 */
+	size_t zero_bytes; 	/* 0으로 채울 남은 페이지 바이트 */
+	size_t read_bytes;	/* 가상페이지에 쓰여있는 데이터 크기 */
+};
+
 static bool
 lazy_load_segment(struct page *page, void *aux)
 {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	struct vm_entry *vme = (struct vm_entry *)aux;
+	/* file position을 offset으로 지정 */
+	file_seek(vme->file, vme->ofs);
+	/* read byte만큼 물리프레임에 읽어들인다 */
+	if (file_read(vme->file, page->frame->kva, vme->read_bytes)!=(vme->read_bytes)){
+		palloc_free_page(page->frame->kva);
+		return false;
+	}
+	/* 남은 만큼 zero로 채운다 */
+	memset(page->frame->kva + vme->read_bytes, 0, vme->zero_bytes);
+	free(vme);
+	return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -725,22 +745,26 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
+
+		/* vme (malloc 사용) */
+		struct vm_entry *vme = (struct vm_entry *)malloc(sizeof(struct vm_entry));
+		/* vme memebers 설정 */
+		vme->read_bytes = page_read_bytes;
+		vme->zero_bytes = page_zero_bytes;
+		vme->file = file;
+		vme->ofs = ofs;
 		
-		/* page (malloc 사용) */
-		struct page *page = (struct page *)malloc(sizeof(struct page));
-		/* page memebers 설정 */
-		page->read_bytes = page_read_bytes;
-		page->zero_bytes = page_zero_bytes;
-		page->writable = writable;
-		page->ofs = ofs;
-		/* page -> hash table */
-		spt_insert_page(thread_current()->spt,page);
-		vm_alloc_page_with_initializer(0, page->va, writable, lazy_load_segment, NULL);
+		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
+											writable, lazy_load_segment, vme))
+			return false;
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+
+		/* ofs 추가 : page 크기만큼 이동을 시켜줘야한단다 */
+		ofs += page_read_bytes;
 	}
 	return true;
 }
@@ -756,7 +780,12 @@ setup_stack(struct intr_frame *if_)
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-
+	if (vm_alloc_page(VM_ANON|VM_MARKER_0,stack_bottom,1)){	// VM_ANON|VM_MARKER_0 -> vm_type() -> type&7 로 연산해서 type 반환
+		success = vm_claim_page(stack_bottom);
+		if (success){
+			if_->rsp = USER_STACK;
+		}
+	}
 	return success;
 }
 #endif /* VM */
