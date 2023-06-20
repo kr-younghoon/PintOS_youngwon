@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 #include "intrinsic.h"
 #include "userprog/syscall.h"
+#define VM
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -66,14 +67,18 @@ tid_t process_create_initd(const char *file_name)
 static void
 initd(void *f_name)
 {
+	printf("안녕하세요!\n");
 #ifdef VM
+	printf("#ifdef VM -> supplemental_page_table_init process.c:72\n");
 	supplemental_page_table_init(&thread_current()->spt);
+	printf("#ifdef end - process.c:74\n");
 #endif
-
+	printf("#endif process_init();\n");
 	process_init();
-
+	printf("process_init() -> if(process_exec()<0)\n");
 	if (process_exec(f_name) < 0)
 		PANIC("Fail to launch initd\n");
+	printf("NOT_REACHED();\n");
 	NOT_REACHED();
 }
 
@@ -224,6 +229,8 @@ int process_exec(void *f_name)
 	char *file_name = f_name;
 	bool success;
 
+	printf("start - process.c:231\n");
+
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
@@ -234,7 +241,7 @@ int process_exec(void *f_name)
 
 	/* We first kill the current context */
 	process_cleanup();
-
+	printf("process_cleanup() - process.c:243\n");
 	/* ---------------추가한 부분------------- */
 	// parsing
 	char *save_ptr, *tocken;
@@ -246,16 +253,17 @@ int process_exec(void *f_name)
 		count++;
 	}
 	/* ---------------------------------- */
-
+	printf("process.c:255\n");
 	/* And then load the binary */
 	success = load(file_name, &_if);
-
+	printf("process.c:258\n");
 	if (!success)
 	{
+		printf("if(!success) - process.c:261\n");
 		palloc_free_page(file_name);
 		return -1;
 	}
-
+	printf("process.c:265\n");
 	/* ---------------추가한 부분------------- */
 	// set up stack
 	argument_stack(arg, count, &_if.rsp);
@@ -264,15 +272,17 @@ int process_exec(void *f_name)
 
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
 	/* ---------------------------------- */
-
+	printf("process.c:274\n");
 	/* If load failed, quit. */
 	palloc_free_page(file_name);
 	// if (!success)
 	// 	return -1;
-
 	/* Start switched process. */
+	printf("process.c:280\n");
 	do_iret(&_if);
+	printf("process.c:282\n");
 	NOT_REACHED();
+	printf("end - process.c:279\n");
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -714,6 +724,8 @@ lazy_load_segment(struct page *page, void *aux)
 	return true;
 }
 
+
+
 /* (수정, 10) 이 함수는 프로세스가 실행될 때, 실행 파일을 현재 스레드로 로드하는 함수인 load함수에서 호출된다.
 	-> 파일 내용을 upage에 로드하는 함수이다. 파일의 내용을 로드하기 위해서 upage를 할당할 page가 필요한데,
 	위에서 수정한 vm_alloc_page_with_initializer 함수를 호출해서 페이지를 생성한다.
@@ -739,7 +751,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT(pg_ofs(upage) == 0);
 	ASSERT(ofs % PGSIZE == 0);
-
+	
 	while (read_bytes > 0 || zero_bytes > 0)
 	{
 		/* Do calculate how to fill this page.
@@ -749,15 +761,13 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		struct lazy_load_arg *lazy_load_arg = 
-			(struct lazy_load_arg *)malloc
-			(sizeof(struct lazy_load_arg));
+		struct lazy_load_arg *lazy_load_arg = (struct lazy_load_arg *)malloc(sizeof(struct lazy_load_arg));
 		lazy_load_arg->file = file;
 		lazy_load_arg->ofs = ofs;
 		lazy_load_arg->read_bytes = page_read_bytes;
 		lazy_load_arg->zero_bytes = page_zero_bytes;
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, aux))
+											writable, lazy_load_segment, lazy_load_arg))
 			return false;
 
 
