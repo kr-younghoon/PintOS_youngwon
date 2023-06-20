@@ -17,5 +17,7 @@ struct thread *get_child_process(tid_t child_tid);
 int process_add_file(struct file *f);
 void process_close_file(int fd);
 struct file *process_get_file(int fd);
-
+#ifdef VM
+static bool lazy_load_segment(struct page *page, void *aux);
+#endif
 #endif /* userprog/process.h */

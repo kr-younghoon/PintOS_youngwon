@@ -192,7 +192,7 @@ __do_fork(void *aux)
 	 * TODO:       the resources of parent.*/
 
 	// FDT 복사
-	for (int i = 0; i < FDT_COUNT_LIMIT; i++)
+	for (int i = 2; i < FDT_COUNT_LIMIT; i++)
 	{
 		struct file *file = parent->fdt[i];
 		if (file == NULL)
@@ -249,7 +249,9 @@ int process_exec(void *f_name)
 	/* ---------------------------------- */
 
 	/* And then load the binary */
+	lock_acquire(&filesys_lock);
 	success = load(file_name, &_if);
+	lock_release(&filesys_lock);
 
 	if (!success)
 	{
@@ -704,7 +706,7 @@ lazy_load_segment(struct page *page, void *aux)
 	/* file position을 offset으로 지정 */
 	file_seek(vme->file, vme->ofs);
 	/* read byte만큼 물리프레임에 읽어들인다 */
-	if (file_read(vme->file, page->frame->kva, vme->read_bytes)!=(vme->read_bytes)){
+	if (file_read(vme->file, page->frame->kva, vme->read_bytes)!=(int)vme->read_bytes){
 		palloc_free_page(page->frame->kva);
 		return false;
 	}

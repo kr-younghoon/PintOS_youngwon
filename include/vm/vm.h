@@ -116,4 +116,7 @@ enum vm_type page_get_type (struct page *page);
 
 static unsigned hash_hash (const struct hash_elem *e, void *aux);
 static bool hash_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
+
+void supplemental_copy_entry(struct hash_elem *e, void *aux);
+void supplemental_destory_entry(struct hash_elem *e, void *aux);
 #endif  /* VM_VM_H */

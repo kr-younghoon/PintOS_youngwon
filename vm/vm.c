@@ -4,6 +4,7 @@
 #include "threads/mmu.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "userprog/process.h"
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -230,11 +231,34 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+	hash_apply(&src->hash, supplemental_copy_entry);
+	return true;
 }
+void
+supplemental_copy_entry(struct hash_elem *e, void *aux){
+	struct page *page = hash_entry(e, struct page, hash_elem);
 
+	if (page->operations->type == VM_UNINIT){
+		vm_alloc_page_with_initializer(page->uninit.type, page->va, 1, lazy_load_segment, NULL);
+		vm_claim_page(page->va);
+
+		struct page *child_page = spt_find_page(&thread_current()->spt, page->va);
+	} else {
+		vm_alloc_page(page->operations->type, page->va, 1);
+		struct page *child_page = spt_find_page(&thread_current()->spt, page->va);
+		vm_claim_page(page->va);
+		memcpy(child_page->frame->kva, page->frame->kva, PGSIZE);
+	}
+}
 /* Free the resource hold by the supplemental page table */
 void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	hash_apply(&spt->hash, supplemental_destory_entry);
+}
+void
+supplemental_destory_entry(struct hash_elem *e, void *aux){
+	struct page *page = hash_entry(e, struct page, hash_elem);
+	destroy(page);
 }
