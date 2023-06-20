@@ -280,6 +280,7 @@ page_less (const struct hash_elem *a_,
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	/* hash_init()으로 해시테이블 초기화 */
+	printf("process.c:283\n");
 	hash_init(&spt->spt_hash, page_hash, page_less, NULL);
 	/* 인자로 해시 테이블(초기화할 테이블)과 vm_hash_func(해시값을 구해주는 함수의 포인터)과 
 	vm_less_func(해시 element들의 크기를 비교해주는 함수의 포인터) 사용 */
