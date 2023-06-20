@@ -305,14 +305,12 @@ palloc_free_multiple (void *pages, size_t page_cnt) {
 	ASSERT (pg_ofs (pages) == 0);
 	if (pages == NULL || page_cnt == 0)
 		return;
-
 	if (page_from_pool (&kernel_pool, pages))
 		pool = &kernel_pool;
 	else if (page_from_pool (&user_pool, pages))
 		pool = &user_pool;
 	else
 		NOT_REACHED ();
-
 	page_idx = pg_no (pages) - pg_no (pool->base);
 
 #ifndef NDEBUG

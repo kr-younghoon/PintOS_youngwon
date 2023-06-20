@@ -48,6 +48,7 @@ static struct frame *vm_evict_frame (void);
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
+	printf("vm_alloc_page_init in - vm.c:51\n");
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
@@ -89,7 +90,9 @@ err:
  */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page page;
+	printf("HELLO C WORLD(sptfindpage in) - process.c:93\n");
+	struct page *page = NULL;
+	page = (struct page *)malloc(sizeof(struct page));
 	/* TODO: Fill this function. */
 	// 인자로 받은 vaddr(va) 에 해당하는 vm_entry를 검색 후 반환
 	// ㄴ 가상 메모리 주소에 해당하는 페이지 번호 추출 (pg_round_down())
@@ -98,9 +101,11 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct hash_elem *e;
 	
 	// va에 해당하는 hash_elem search
-	page.va = va;
-	e = hash_find(&spt->spt_hash, &page.hash_elem);
+	page->va = pg_round_down(va);
+	e = hash_find(&spt->spt_hash, &page->hash_elem);
+	free(page);
 	// 있으면 e에 해당하는 페이지 반환
+	printf("HELLO C WORLD(sptfindpage out) - process.c:109\n");
 	return e != NULL ? hash_entry(e, struct page, hash_elem):NULL;
 }
 
