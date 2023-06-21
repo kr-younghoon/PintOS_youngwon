@@ -48,14 +48,14 @@ static struct frame *vm_evict_frame (void);
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
-	printf("vm_alloc_page_init in - vm.c:51\n");
+	// printf("vm_alloc_page_init in - vm.c:51\n");
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
 	/* Check wheter the upage is already occupied or not. 
 		upage(p를 할당할 가상 주소)가 이미 사용 중인지 확인합니다. */
 	if (spt_find_page (spt, upage) == NULL) {
-		printf("upage(p를 할당할 가상 주소) == NULL vm.c:58\n");
+		// printf("upage(p를 할당할 가상 주소) == NULL vm.c:58\n");
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: 1) 페이지를 생성하고, 2) VM_type 유형에 따라 초기화 함수를 가져오세요. */
 		struct page *p = (struct page *)malloc(sizeof(struct page));
@@ -91,7 +91,7 @@ err:
  */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	printf("HELLO C WORLD(sptfindpage in) - vm.c:93\n");
+	// printf("HELLO C WORLD(sptfindpage in) - vm.c:93\n");
 	struct page page;
 	/* TODO: Fill this function. */
 	// 인자로 받은 vaddr(va) 에 해당하는 vm_entry를 검색 후 반환
@@ -105,7 +105,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	e = hash_find(&spt->spt_hash, &page.hash_elem);
 	// 있으면 e에 해당하는 페이지 반환
 	// ASSERT(e == NULL);
-	printf("HELLO C WORLD(sptfindpage out) - vm.c:109\n");
+	// printf("HELLO C WORLD(sptfindpage out) - vm.c:109\n");
 	return e != NULL ? hash_entry(e, struct page, hash_elem):NULL;
 }
 
@@ -286,9 +286,9 @@ page_less (const struct hash_elem *a_,
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	/* hash_init()으로 해시테이블 초기화 */
-	printf("process.c:287\n");
+	// printf("process.c:287\n");
 	hash_init(&spt->spt_hash, page_hash, page_less, NULL);
-	printf("spt_init->hash_init | vm.c:290\n");
+	// printf("spt_init->hash_init | vm.c:290\n");
 	/* 인자로 해시 테이블(초기화할 테이블)과 vm_hash_func(해시값을 구해주는 함수의 포인터)과 
 	vm_less_func(해시 element들의 크기를 비교해주는 함수의 포인터) 사용 */
 }
