@@ -284,7 +284,6 @@ thread_current(void)
 	   recursion can cause stack overflow. */
 	ASSERT(is_thread(t));
 	ASSERT(t->status == THREAD_RUNNING);
-
 	return t;
 }
 

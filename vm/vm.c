@@ -48,7 +48,7 @@ static struct frame *vm_evict_frame (void);
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
-	printf("vm_alloc_page_init in - vm.c:51\n");
+	// printf("vm_alloc_page_init in - vm.c:51\n");
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
@@ -90,9 +90,8 @@ err:
  */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	printf("HELLO C WORLD(sptfindpage in) - process.c:93\n");
-	struct page *page = NULL;
-	page = (struct page *)malloc(sizeof(struct page));
+	// printf("HELLO C WORLD(sptfindpage in) - process.c:93\n");
+	struct page page;
 	/* TODO: Fill this function. */
 	// 인자로 받은 vaddr(va) 에 해당하는 vm_entry를 검색 후 반환
 	// ㄴ 가상 메모리 주소에 해당하는 페이지 번호 추출 (pg_round_down())
@@ -101,11 +100,10 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct hash_elem *e;
 	
 	// va에 해당하는 hash_elem search
-	page->va = pg_round_down(va);
-	e = hash_find(&spt->spt_hash, &page->hash_elem);
-	free(page);
+	page.va = pg_round_down(va);
+	e = hash_find(&spt->spt_hash, &page.hash_elem);
 	// 있으면 e에 해당하는 페이지 반환
-	printf("HELLO C WORLD(sptfindpage out) - process.c:109\n");
+	// printf("HELLO C WORLD(sptfindpage out) - process.c:109\n");
 	return e != NULL ? hash_entry(e, struct page, hash_elem):NULL;
 }
 
@@ -231,6 +229,7 @@ vm_dealloc_page (struct page *page) {
    3. 우선 한 페이지를 얻어야 하고,
    4. return -> vm_do_claim_page(page);
  */
+// 문제 없음..?
 bool
 vm_claim_page (void *va UNUSED) {
 	struct page *page = NULL;
@@ -257,7 +256,7 @@ vm_do_claim_page (struct page *page) {
 	/* TODO: 페이지 테이블 항목을 삽입하여 페이지의 가상 주소(VA)를 프레임의 물리 주소(PA)에 매핑합니다.*/
 	struct thread *current = thread_current();
 	pml4_set_page(current->pml4, page->va, frame->kva, page->writable);
-	bool success = swap_in (page, frame->kva);;
+	bool success = swap_in (page, frame->kva);
 	return  success;// uninit_initialize
 }
 /* (수정, 2)Returns a hash value for page p. */
@@ -285,8 +284,9 @@ page_less (const struct hash_elem *a_,
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	/* hash_init()으로 해시테이블 초기화 */
-	printf("process.c:283\n");
+	// printf("process.c:283\n");
 	hash_init(&spt->spt_hash, page_hash, page_less, NULL);
+	// printf("spt_init->hash_init | vm.c:288\n");
 	/* 인자로 해시 테이블(초기화할 테이블)과 vm_hash_func(해시값을 구해주는 함수의 포인터)과 
 	vm_less_func(해시 element들의 크기를 비교해주는 함수의 포인터) 사용 */
 }
