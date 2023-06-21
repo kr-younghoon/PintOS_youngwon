@@ -278,6 +278,5 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 void
 supplemental_destory_entry(struct hash_elem *e, void *aux){
 	struct page *page = hash_entry(e, struct page, hash_elem);
-	destroy(page);
-	free(page);
+	vm_dealloc_page(page);
 }

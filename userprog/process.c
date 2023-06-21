@@ -101,7 +101,7 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 
 	struct thread *child = get_child_process(tid);
 	sema_down(&child->load_sema);
-	if (child->exit_status == TID_ERROR)
+	if (child->exit_status == -2)
 	{
 		// sema_up(&child->exit_sema);
 		return TID_ERROR;
@@ -222,8 +222,7 @@ __do_fork(void *aux)
 error:
 	sema_up(&current->load_sema);
 	// thread_exit();
-	// exit(-2);
-	exit(TID_ERROR);
+	exit(-2);
 }
 
 /* Switch the current execution context to the f_name.
