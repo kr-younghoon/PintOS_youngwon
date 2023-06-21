@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 #include "intrinsic.h"
 #include "userprog/syscall.h"
+#define VM
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -69,11 +70,16 @@ initd(void *f_name)
 #ifdef VM
 	supplemental_page_table_init(&thread_current()->spt);
 #endif
+	// printf("----init gg file name : %s-----\n", f_name);
 
 	process_init();
-
-	if (process_exec(f_name) < 0)
+	// printf("----init oo file name : %s-----\n", f_name);
+	
+	// printf("---------------------\n");
+	
+	if (process_exec(f_name) < 0) {
 		PANIC("Fail to launch initd\n");
+	}
 	NOT_REACHED();
 }
 
@@ -84,8 +90,10 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	/* Clone current thread to new thread.*/
 	struct thread *curr = thread_current();
 	memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
-
+	// printf("----process_fork in-----\n");
 	tid_t tid = thread_create(name, PRI_DEFAULT, __do_fork, curr);
+	// printf("----process_fork do fork out-----\n");
+	
 	if (tid == TID_ERROR)
 	{
 		return TID_ERROR;
@@ -93,9 +101,9 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 
 	struct thread *child = get_child_process(tid);
 	sema_down(&child->load_sema);
-	if (child->exit_status == -2)
+	if (child->exit_status == TID_ERROR)
 	{
-		sema_up(&child->exit_sema);
+		// sema_up(&child->exit_sema);
 		return TID_ERROR;
 	}
 
@@ -192,7 +200,7 @@ __do_fork(void *aux)
 	 * TODO:       the resources of parent.*/
 
 	// FDT 복사
-	for (int i = 2; i < FDT_COUNT_LIMIT; i++)
+	for (int i = 0; i < FDT_COUNT_LIMIT; i++)
 	{
 		struct file *file = parent->fdt[i];
 		if (file == NULL)
@@ -214,13 +222,15 @@ __do_fork(void *aux)
 error:
 	sema_up(&current->load_sema);
 	// thread_exit();
-	exit(-2);
+	// exit(-2);
+	exit(TID_ERROR);
 }
 
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
 int process_exec(void *f_name)
 {
+	// printf("------exec--------\n");
 	char *file_name = f_name;
 	bool success;
 
@@ -234,30 +244,36 @@ int process_exec(void *f_name)
 
 	/* We first kill the current context */
 	process_cleanup();
-	supplemental_page_table_init(&thread_current()->spt);
 
 	/* ---------------추가한 부분------------- */
 	// parsing
-	char *save_ptr, *tocken;
+	char *save_ptr, *token;
 	char *arg[64];
 	int count = 0;
-	for (tocken = strtok_r(file_name, " ", &save_ptr); tocken != NULL; tocken = strtok_r(NULL, " ", &save_ptr))
+	// printf("----str gg file name : %s-----\n", file_name);
+	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr))
 	{
-		arg[count] = tocken;
-		count++;
+		arg[count++] = token;
 	}
 	/* ---------------------------------- */
 
 	/* And then load the binary */
 	lock_acquire(&filesys_lock);
 	success = load(file_name, &_if);
+	// printf("----load oo file name : %s-----\n",file_name);
 	lock_release(&filesys_lock);
+	// printf("------load oo--------\n");
 
 	if (!success)
 	{
+	// printf("------!suc--------\n");
+
 		palloc_free_page(file_name);
+	// printf("------palloc free oo--------\n");
+
 		return -1;
 	}
+	// printf("------suc oo--------\n");
 
 	/* ---------------추가한 부분------------- */
 	// set up stack
@@ -269,9 +285,10 @@ int process_exec(void *f_name)
 	/* ---------------------------------- */
 
 	/* If load failed, quit. */
+	// printf("-----exec palloc gg----\n");
 	palloc_free_page(file_name);
-	// if (!success)
-	// 	return -1;
+	// printf("-----exec palloc oo----\n");
+
 
 	/* Start switched process. */
 	do_iret(&_if);
@@ -439,20 +456,24 @@ load(const char *file_name, struct intr_frame *if_)
 	off_t file_ofs;
 	bool success = false;
 	int i;
+	// printf("------load in--------\n");
 
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create();
 	if (t->pml4 == NULL)
 		goto done;
 	process_activate(thread_current());
+	// printf("------proc act oo--------\n");
 
 	/* Open executable file. */
 	file = filesys_open(file_name);
+	// printf("-----please open file name : %s-----\n", file_name);
 	if (file == NULL)
 	{
 		printf("load: %s: open failed\n", file_name);
 		goto done;
 	}
+	// printf("------file notNull--------\n");
 
 	/* Read and verify executable header. */
 	if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 0x3E // amd64
@@ -461,6 +482,7 @@ load(const char *file_name, struct intr_frame *if_)
 		printf("load: %s: error loading executable\n", file_name);
 		goto done;
 	}
+	// printf("------read header--------\n");
 
 	/* Read program headers. */
 	file_ofs = ehdr.e_phoff;
@@ -526,6 +548,8 @@ load(const char *file_name, struct intr_frame *if_)
 	/* Set up stack. */
 	if (!setup_stack(if_))
 		goto done;
+	
+	// printf("------setup stack oo-------\n");
 
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
@@ -689,27 +713,30 @@ install_page(void *upage, void *kpage, bool writable)
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-struct vm_entry{
-	struct file *file;
-	off_t ofs;	 		/* 읽어야할 파일 오프셋 */
-	size_t zero_bytes; 	/* 0으로 채울 남은 페이지 바이트 */
-	size_t read_bytes;	/* 가상페이지에 쓰여있는 데이터 크기 */
-};
-
 static bool
 lazy_load_segment(struct page *page, void *aux)
 {
+	// printf("------lazy load segment-------\n");
+
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
 	struct vm_entry *vme = (struct vm_entry *)aux;
 	/* file position을 offset으로 지정 */
 	file_seek(vme->file, vme->ofs);
+	// printf("------lazy load file seek oo-------\n");
+	
 	/* read byte만큼 물리프레임에 읽어들인다 */
 	if (file_read(vme->file, page->frame->kva, vme->read_bytes)!=(int)vme->read_bytes){
+		// printf("------lazy load file read != read bytes-------\n");
+
 		palloc_free_page(page->frame->kva);
+		// printf("------lazy load file palloc free out-------\n");
+
 		return false;
 	}
+	// printf("------lazy load file read == read bytes-------\n");
+
 	/* 남은 만큼 zero로 채운다 */
 	memset(page->frame->kva + vme->read_bytes, 0, vme->zero_bytes);
 	free(vme);
@@ -755,11 +782,17 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		vme->zero_bytes = page_zero_bytes;
 		vme->file = file;
 		vme->ofs = ofs;
-		
+
+		// printf("------load seg vm alloc begin-------\n");
+
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
 											writable, lazy_load_segment, vme))
-			return false;
-
+			{
+		// printf("------load seg vm alloc false-------\n");
+				
+				return false;}
+		// printf("------load seg vm alloc true-------\n");
+		
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
@@ -768,6 +801,9 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		/* ofs 추가 : page 크기만큼 이동을 시켜줘야한단다 */
 		ofs += page_read_bytes;
 	}
+
+	// printf("------load seg true-------\n");
+
 	return true;
 }
 
@@ -775,6 +811,8 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack(struct intr_frame *if_)
 {
+	// printf("------set up stack-------\n");
+
 	bool success = false;
 	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
 
@@ -782,8 +820,12 @@ setup_stack(struct intr_frame *if_)
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-	if (vm_alloc_page(VM_ANON|VM_MARKER_0,stack_bottom,1)){	// VM_ANON|VM_MARKER_0 -> vm_type() -> type&7 로 연산해서 type 반환
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){	// VM_ANON|VM_MARKER_0 -> vm_type() -> type&7 로 연산해서 type 반환
+		// printf("------set up stack vm alloc true-------\n");
+		
 		success = vm_claim_page(stack_bottom);
+		// printf("------set up stack vm claim oo-------\n");
+
 		if (success){
 			if_->rsp = USER_STACK;
 		}
