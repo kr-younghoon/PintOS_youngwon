@@ -176,16 +176,12 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	if (addr == NULL) 
-		return false;
-	if (is_kernel_vaddr(addr))
+	if (is_kernel_vaddr(addr) && !addr)
 		return false;
 	void *vaddr = pg_round_down(addr);
 	if (not_present){
 		page = spt_find_page(spt,vaddr);
 		if (page == NULL)
-			return false;
-		if (write == 1 && page->writable == 0)
 			return false;
 		return vm_do_claim_page (page);	
 	}
