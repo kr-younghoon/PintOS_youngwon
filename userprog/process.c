@@ -716,30 +716,23 @@ install_page(void *upage, void *kpage, bool writable)
 static bool
 lazy_load_segment(struct page *page, void *aux)
 {
-	// printf("------lazy load segment-------\n");
-
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
 	struct vm_entry *vme = (struct vm_entry *)aux;
 	/* file position을 offset으로 지정 */
 	file_seek(vme->file, vme->ofs);
-	// printf("------lazy load file seek oo-------\n");
 	
 	/* read byte만큼 물리프레임에 읽어들인다 */
 	if (file_read(vme->file, page->frame->kva, vme->read_bytes)!=(int)vme->read_bytes){
-		// printf("------lazy load file read != read bytes-------\n");
 
 		palloc_free_page(page->frame->kva);
-		// printf("------lazy load file palloc free out-------\n");
 
 		return false;
 	}
-	// printf("------lazy load file read == read bytes-------\n");
-
 	/* 남은 만큼 zero로 채운다 */
 	memset(page->frame->kva + vme->read_bytes, 0, vme->zero_bytes);
-	free(vme);
+
 	return true;
 }
 
