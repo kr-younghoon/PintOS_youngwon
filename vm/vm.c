@@ -293,17 +293,65 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	vm_less_func(해시 element들의 크기를 비교해주는 함수의 포인터) 사용 */
 }
 
-/* Copy supplemental page table from src to dst */
+/* (수정,14) Copy supplemental page table from src to dst
+	src에서 dst로 보조 페이지 테이블을 복사합니다. 
+	이것은 자식이 부모의 실행 contxt를 상속할 필요가 있을 때 사용된다. 
+	src의 spt를 반복하며 dst의 spt의 엔트리의 정확한 복사본을 만드세요
+	당신은 초기화되지 않은 페이지를 할당하고 그것들을 요청할 필요가 있다 */
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+	hash_apply(&src->spt_hash, supplemental_copy_entry);
+	return true;
 }
 
+void 
+supplemental_copy_entry(struct hash_elem *e, void *aux) {
+	struct page *p = hash_entry(e, struct page, hash_elem);
+	enum vm_type type = p->operations->type;
+	
+	if (type == VM_UNINIT) {
+		vm_alloc_page_with_initializer(p->uninit.type, p->va, 
+										1, p->uninit.init, p->uninit.aux);
+		vm_claim_page(p->va);
+		struct page *child_page = spt_find_page(&thread_current()->spt, p->va);
+	} else if (type == VM_ANON) {
+		vm_alloc_page(VM_ANON, p->va, 1);
+		struct page *child_p = spt_find_page(&thread_current()->spt, p->va);
+
+		vm_do_claim_page(child_p);
+		memcpy(child_p->frame->kva, p->frame->kva, PGSIZE);
+	} else if (type = VM_FILE) {
+		struct file_info *tmp = (struct file_info *)p->file.aux;//file.aux인데 file.aux가 안된다잉
+
+		vm_alloc_page(VM_FILE, p->va, 1);
+
+		struct page *child_p = (struct page *)spt_find_page(&thread_current()->spt, p->va);
+
+		vm_do_claim_page(child_p);
+
+		struct file_page *file_page = &child_p -> file;
+
+		file_page->aux = tmp;
+		memcpy(child_p->frame->kva, p->frame->kva, PGSIZE);
+	}
+	// } else { = 예린씨 코드
+	// 	vm_alloc_page(p->operations->type, p->va, 1);
+	// 	struct page *child_page = spt_find_page(&thread_current()->spt, p->va);
+	// 	vm_claim_page(p->va);
+	// 	memcpy(child_page->frame->kva, p->frame->kva, PGSIZE);
+	// }
+}
 /* Free the resource hold by the supplemental page table */
 void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	hash_clear(&spt->spt_hash, supplemental_destroy_entry);
 }
 
-
+void
+supplemental_destroy_entry(struct hash_elem *e, void *aux) {
+	struct page *page = hash_entry(e, struct page, hash_elem);
+	vm_dealloc_page(page);
+}
