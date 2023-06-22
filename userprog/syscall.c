@@ -69,7 +69,9 @@ void syscall_init(void) {
 /* The main system call interface */
 void syscall_handler(struct intr_frame *f UNUSED) {
 	int sys_num = f->R.rax; // syscall number
-
+#ifdef VM
+	thread_current()->rsp = f->rsp; // 추가
+#endif
 	switch (sys_num) {
 	case SYS_HALT:
 		halt();
