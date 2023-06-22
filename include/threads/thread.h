@@ -96,7 +96,7 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
-	int64_t wakeup_tick;					/* 깨워주기 위한 값 */
+	int64_t wakeup_tick;				/* 깨워주기 위한 값 */
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
@@ -121,6 +121,7 @@ struct thread {
 	struct semaphore exit_sema;			/* 종료 확인 */
 	struct semaphore wait_sema;			/* 기다림 확인 */
 
+	uintptr_t rsp;						/* user → kernel (stack growth) */
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */

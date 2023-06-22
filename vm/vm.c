@@ -161,6 +161,7 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
+	vm_alloc_page(VM_ANON | VM_MARKER_0, addr, 1);
 }
 
 /* Handle the fault on write_protected page */
@@ -178,12 +179,17 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Your code goes here */
 	if (is_kernel_vaddr(addr) && !addr)
 		return false;
-	void *vaddr = pg_round_down(addr);
+
 	if (not_present){
-		page = spt_find_page(spt,vaddr);
-		if (page == NULL)
-			return false;
-		return vm_do_claim_page (page);	
+		void *vaddr = pg_round_down(addr);
+		void *rsp;
+		rsp = user ? (void *)f->rsp : (void *)thread_current()->rsp;
+		if (USER_STACK - (1 << 20) <= rsp - 8 && rsp - 8 == addr && addr <= USER_STACK)
+			vm_stack_growth(vaddr);
+		else if (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK)
+			vm_stack_growth(vaddr);
+
+		return vm_claim_page(vaddr);
 	}
 	return false;
 }
@@ -204,12 +210,8 @@ vm_claim_page (void *va UNUSED) {
 	/* va → page */
 	page = spt_find_page(&thread_current()->spt, va);
 	/* va에 해당하는 page를 찾을 수 없으면, false */
-	if (page == NULL){
-		// printf("------vm claim page : page is null------\n");
+	if (page == NULL)
 		return false;
-	}
-	// printf("------vm claim page : page is not null------\n");
-
 	return vm_do_claim_page (page);
 }
 
@@ -254,18 +256,17 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 }
 void
 supplemental_copy_entry(struct hash_elem *e, void *aux){
-	struct page *page = hash_entry(e, struct page, hash_elem);
+	struct page *page = hash_entry(e, struct page, hash_elem);		// hash_elem을 가지고 hash_entry를 찾아서 page에 저장
 
 	if (page->operations->type == VM_UNINIT){
 		vm_alloc_page_with_initializer(page->uninit.type, page->va, 1, page->uninit.init, page->uninit.aux);
 		vm_claim_page(page->va);
-
-		struct page *child_page = spt_find_page(&thread_current()->spt, page->va);
 	} else {
+		/* 메모리에는 있는데, disk에는 없는 상태 : VM_ANON */
 		vm_alloc_page(page->operations->type, page->va, 1);
 		struct page *child_page = spt_find_page(&thread_current()->spt, page->va);
-		vm_claim_page(page->va);
-		memcpy(child_page->frame->kva, page->frame->kva, PGSIZE);
+		vm_claim_page(page->va);									// mapping page -> frame
+		memcpy(child_page->frame->kva, page->frame->kva, PGSIZE);	// 공간 할당만 해놓고 copy만 하면된다 disk에도 없기 때문에 초기화 과정이 필요없다
 	}
 }
 /* Free the resource hold by the supplemental page table */
@@ -273,7 +274,7 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
-	hash_clear(&spt->hash, supplemental_destory_entry);
+	hash_clear(&spt->hash, supplemental_destory_entry);	// hash_clear : while문으로 삭제하는 함수
 }
 void
 supplemental_destory_entry(struct hash_elem *e, void *aux){
