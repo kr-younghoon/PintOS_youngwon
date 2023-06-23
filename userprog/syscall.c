@@ -222,9 +222,15 @@ int read(int fd, void *buffer, unsigned size) {
 	}
 	else {
 		struct file *f = process_get_file(fd);
-		if (f == NULL) {
-			return -1;
-		}
+		#ifdef VM
+    		struct page *read_page = spt_find_page(&thread_current()->spt, buffer);
+      		if(read_page && !read_page->writable){
+        		exit(-1);
+    	}
+    	#endif
+			if (f == NULL) {
+				return -1;
+			}
 		lock_acquire(&filesys_lock);
 		result = file_read(f, buffer, size);
 		lock_release(&filesys_lock);
