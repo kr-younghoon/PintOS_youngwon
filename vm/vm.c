@@ -184,9 +184,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		void *vaddr = pg_round_down(addr);
 		void *rsp;
 		rsp = user ? (void *)f->rsp : (void *)thread_current()->rsp;
-		if (USER_STACK - (1 << 20) <= rsp - 8 && rsp - 8 == addr && addr <= USER_STACK)
-			vm_stack_growth(vaddr);
-		else if (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK)
+		if (USER_STACK - (1 << 20) <= rsp - 8 && rsp - 8 <= addr && addr <= USER_STACK)
 			vm_stack_growth(vaddr);
 
 		return vm_claim_page(vaddr);
