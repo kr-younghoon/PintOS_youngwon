@@ -72,7 +72,7 @@ initd(void *f_name)
 #ifdef VM
 	// printf("#ifdef VM -> supplemental_page_table_init process.c:72\n");
 	supplemental_page_table_init(&thread_current()->spt);
-	// printf("#ifdef end - process.c:74\n");
+	// printf("#ifdef end spt초기화완료 - process.c:74\n");
 #endif
 	// printf("#endif process_init(); process.c:77\n");
 	process_init();
@@ -266,7 +266,7 @@ int process_exec(void *f_name)
 		palloc_free_page(file_name);
 		return -1;
 	}
-	// printf("process.c:265\n");
+	// printf("process.c:269\n");
 	/* ---------------추가한 부분------------- */
 	// set up stack
 	argument_stack(arg, count, &_if.rsp);
@@ -461,7 +461,7 @@ load(const char *file_name, struct intr_frame *if_)
 	file = filesys_open(file_name);
 	if (file == NULL)
 	{
-		// printf("load: %s: open failed\n", file_name);
+		printf("load: %s: open failed\n", file_name);
 		goto done;
 	}
 
@@ -478,7 +478,7 @@ load(const char *file_name, struct intr_frame *if_)
 	for (i = 0; i < ehdr.e_phnum; i++)
 	{
 		struct Phdr phdr;
-
+		// printf("load-for문 loop // process.c:481\n");
 		if (file_ofs < 0 || file_ofs > file_length(file))
 			goto done;
 		file_seek(file, file_ofs);
@@ -523,6 +523,7 @@ load(const char *file_name, struct intr_frame *if_)
 					zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
 					// printf("else : process.c:523\n");
 				}
+				// printf("load-load_seg-run // process.c:526\n");
 				if (!load_segment(file, file_page, (void *)mem_page,
 								  read_bytes, zero_bytes, writable)) {
 					// printf("if !load_seg : process.c:528\n");
@@ -539,11 +540,12 @@ load(const char *file_name, struct intr_frame *if_)
 
 	t->running = file;
 	file_deny_write(file);
-
+	// printf("load-setup_stack()-run // process.c:543\n");
 	/* Set up stack. */
-	if (!setup_stack(if_))
+	if (!setup_stack(if_)) {
 		goto done;
-
+		// printf("load-setup_stack()-in/out // process.c:548\n");
+	}
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
 

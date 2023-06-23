@@ -214,7 +214,8 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		if (!user)
 			rsp = thread_current()->rsp;
 		// 스택 확장으로 처리할 수 있는 폴트인 경우, vm_stack_growth를 호출한다.
-		if ((USER_STACK - (1 << 20) <= rsp - 8 && rsp - 8 == addr && addr <= USER_STACK) || (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK))
+		if ((USER_STACK - (1 << 20) <= rsp - 8 && rsp - 8 == addr && addr <= USER_STACK) 
+				|| (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK))
 			vm_stack_growth(addr);
 		/* TODO: Validate the fault */
         page = spt_find_page(spt, vaddr);
@@ -335,7 +336,7 @@ supplemental_copy_entry(struct hash_elem *e, void *aux) {
 		vm_do_claim_page(child_p);
 		memcpy(child_p->frame->kva, p->frame->kva, PGSIZE);
 	} else if (type = VM_FILE) {
-		struct file_info *tmp = (struct file_info *)p->file.aux;//file.aux인데 file.aux가 안된다잉
+		struct file_info *tmp = (struct file_info *)p->file.aux;
 
 		vm_alloc_page(VM_FILE, p->va, 1);
 
