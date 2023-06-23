@@ -16,6 +16,8 @@
 #include "devices/input.h"
 #include "threads/palloc.h"
 
+#include "vm/vm.h"
+
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
 
@@ -209,6 +211,11 @@ int filesize(int fd) {
 // 파일 읽기
 int read(int fd, void *buffer, unsigned size) {
 	check_address(buffer);
+	#ifdef VM
+		struct page *page = spt_find_page(&thread_current()->spt, pg_round_down(buffer));
+		if (page && !page->writable)
+			exit(-1);
+	#endif	
 	int result = 0;
 
 	if (fd == 0) {
@@ -234,7 +241,6 @@ int write(int fd, const void *buffer, unsigned size)
 {
 	check_address(buffer);
 	int result = 0;
-
 	if (fd == 1) {
 		putbuf(buffer, size);
 		result = size;

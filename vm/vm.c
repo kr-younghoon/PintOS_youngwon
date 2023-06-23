@@ -52,7 +52,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 
 	/* Check wheter the upage is already occupied or not. */
 	if (spt_find_page (spt, upage) == NULL) {
-		// printf("-----vm alloc page init spt find NULL-----\n");
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
@@ -67,13 +66,11 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 				break;
 		}
 		uninit_new(page, upage, init, type, aux, initializer);
-		// printf("-----vm alloc page init uninit new-----\n");
 
 		page->writable = writable;
 		/* TODO: Insert the page into the spt. */
 		return spt_insert_page(spt,page);
 	}
-	// printf("-----vm alloc page init spt find not NULL-----\n");
 err:
 	return false;
 }
@@ -88,10 +85,8 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	/* hash_find : return hash_elem */
 	struct hash_elem *entry = hash_find(spt, &page->hash_elem);
 	if (entry==NULL){
-		// printf("------spt find page : entry is NULL----\n");
 		return NULL;
 	}
-	// printf("------spt find page : entry is not NULL----\n");
 	free(page);
 	/* hash_entry : hash_elem pointer → struct pointer */
 	page = hash_entry(entry, struct page, hash_elem);
