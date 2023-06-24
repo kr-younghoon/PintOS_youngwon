@@ -6,6 +6,7 @@
 #include "threads/mmu.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "userprog/process.h"
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -318,47 +319,62 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
-	hash_apply(&src->spt_hash, supplemental_copy_entry);
-	return true;
-}
-
-void 
-supplemental_copy_entry(struct hash_elem *e, void *aux) {
-	struct page *p = hash_entry(e, struct page, hash_elem);
-	enum vm_type type = p->operations->type;
+	struct hash_iterator i;
+	hash_first(&i, &src->spt_hash);
+	while(hash_next(&i))
+	{
+		struct page *p = hash_entry(hash_cur(&i), struct page, hash_elem);
+		enum vm_type type = p->operations->type;
+		void *upage = p->va;
+		bool writable = p->writable;
 	
-	if (type == VM_UNINIT) {
-		vm_alloc_page_with_initializer(p->uninit.type, p->va, 
+		if (type == VM_UNINIT) {
+			vm_alloc_page_with_initializer(p->uninit.type, p->va, 
 										1, p->uninit.init, p->uninit.aux);
-		vm_claim_page(p->va);
-		struct page *child_page = spt_find_page(&thread_current()->spt, p->va);
-	} else if (type == VM_ANON) {
-		vm_alloc_page(VM_ANON, p->va, 1);
-		struct page *child_p = spt_find_page(&thread_current()->spt, p->va);
+			vm_claim_page(p->va);
+			struct page *child_page = spt_find_page(&thread_current()->spt, p->va);
+		} else if (type == VM_ANON) {
+			vm_alloc_page(VM_ANON, p->va, 1);
+			struct page *child_p = spt_find_page(&thread_current()->spt, p->va);
 
-		vm_do_claim_page(child_p);
-		memcpy(child_p->frame->kva, p->frame->kva, PGSIZE);
-	} else if (type = VM_FILE) {
-		// struct file_info *tmp = (struct file_info *)p->file.aux;
+			vm_do_claim_page(child_p);
+			memcpy(child_p->frame->kva, p->frame->kva, PGSIZE);
 
-		vm_alloc_page(VM_FILE, p->va, 1);
+		} else if (type = VM_FILE) {
+			// struct file_info *tmp = (struct file_info *)p->file.aux;
 
-		struct page *child_p = (struct page *)spt_find_page(&thread_current()->spt, p->va);
+			// vm_alloc_page(VM_FILE, p->va, 1);
 
-		vm_do_claim_page(child_p);
+			// struct page *child_p = (struct page *)spt_find_page(&thread_current()->spt, p->va);
 
-		// struct file_page *file_page = &child_p -> file;
-
-		// file_page->aux = tmp;
-		memcpy(child_p->frame->kva, p->frame->kva, PGSIZE);
-	}
+			// vm_do_claim_page(child_p);
+			// 주석처리 #1 process.h file_page *aux 관련 이슈
+			// struct file_page *file_page = &child_p -> file;
+		
+			// file_page->aux = tmp;
+			// memcpy(child_p->frame->kva, p->frame->kva, PGSIZE);
+			struct lazy_load_arg *file_aux = malloc(sizeof(struct lazy_load_arg));
+			file_aux->file = p->file.file;
+			file_aux->ofs = p->file.ofs;
+			file_aux->read_bytes = p->file.read_bytes;
+			file_aux->zero_bytes = p->file.zero_bytes;
+			if (!vm_alloc_page_with_initializer(type, upage, writable, NULL, file_aux))
+				return false;
+			struct page *file_page = spt_find_page(dst, upage);
+			file_backed_initializer(file_page, type, NULL);
+			file_page->frame = p->frame;
+			pml4_set_page(thread_current()->pml4, file_page->va, p->frame->kva, p->writable);
+		}
 	// } else { = 예린씨 코드
 	// 	vm_alloc_page(p->operations->type, p->va, 1);
 	// 	struct page *child_page = spt_find_page(&thread_current()->spt, p->va);
 	// 	vm_claim_page(p->va);
 	// 	memcpy(child_page->frame->kva, p->frame->kva, PGSIZE);
 	// }
+	}
+	return true;
 }
+
 /* Free the resource hold by the supplemental page table */
 void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
