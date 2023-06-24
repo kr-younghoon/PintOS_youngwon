@@ -24,6 +24,8 @@
 #include "vm/vm.h"
 #endif
 
+#include "filesys/file.h"
+
 static void process_cleanup(void);
 static bool load(const char *file_name, struct intr_frame *if_);
 static void initd(void *f_name);
@@ -258,7 +260,9 @@ int process_exec(void *f_name)
 	/* ---------------------------------- */
 	// printf("succ = load() process.c:259\n");
 	/* And then load the binary */
+	lock_acquire(&filesys_lock);
 	success = load(file_name, &_if);
+	lock_release(&filesys_lock);
 	// printf("process.c:262\n");
 	if (!success)
 	{
@@ -304,14 +308,16 @@ int process_wait(tid_t child_tid UNUSED)
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	struct thread *child = get_child_process(child_tid);
+	// printf("[process_wait] run \t\t\t\t| process.c:307\n");
 	if (child == NULL)
 	{
+		// printf("[process_wait]if(child == NULL) t\t\t| process.c:315\n");
 		return -1;
 	}
 	sema_down(&child->wait_sema);
 	list_remove(&child->child_elem);
 	sema_up(&child->exit_sema);
-
+	// printf("[process_wait] stop \t\t\t\t| process.c:315\n");
 	return child->exit_status;
 }
 

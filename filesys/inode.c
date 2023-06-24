@@ -116,16 +116,23 @@ inode_open (disk_sector_t sector) {
 
 	/* Allocate memory. */
 	inode = malloc (sizeof *inode);
-	if (inode == NULL)
+	// printf("indoe is nnnnnnnn? %d\n", inode == NULL);
+	if (inode == NULL) {
+		// printf("?\n");
 		return NULL;
-
+	}
+	// printf("initialize\n");
 	/* Initialize. */
 	list_push_front (&open_inodes, &inode->elem);
+	// printf("??\n");
 	inode->sector = sector;
 	inode->open_cnt = 1;
 	inode->deny_write_cnt = 0;
 	inode->removed = false;
+	// printf("???\n");
 	disk_read (filesys_disk, inode->sector, &inode->data);
+	// printf("inode is null: %d\n", inode == NULL);
+	// printf("????\n");
 	return inode;
 }
 

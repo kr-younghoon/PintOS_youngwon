@@ -195,6 +195,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault 오류를 검증하라 */
 	/* TODO: Your code goes here 코드를 작성하라 */
+	// printf("fault addr: %p\n", addr);
 
 	// not_present -> true
 	if (addr == NULL)
@@ -223,6 +224,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
             return false;
         if (write == 1 && page->writable == 0) // write 불가능한 페이지에 write 요청한 경우
             return false;
+		// printf("page type? %d\n", page_get_type(page));
 		return vm_do_claim_page (page);
 	}
 	return false;
@@ -273,6 +275,7 @@ vm_do_claim_page (struct page *page) {
 	struct thread *current = thread_current();
 	pml4_set_page(current->pml4, page->va, frame->kva, page->writable);
 	bool success = swap_in (page, frame->kva);
+	// printf("success? %d\n", success);
 	return  success;// uninit_initialize
 }
 /* (수정, 2)Returns a hash value for page p. */

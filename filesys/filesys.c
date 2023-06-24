@@ -81,11 +81,12 @@ struct file *
 filesys_open (const char *name) {
 	struct dir *dir = dir_open_root ();
 	struct inode *inode = NULL;
-
+	// printf("dir, inode init \t\t\t\t- filesys.c:84\n");
 	if (dir != NULL)
+		// printf("if dir != NULL -> dir_lookup \t\t\t| filesys.c:86\n");
 		dir_lookup (dir, name, &inode);
 	dir_close (dir);
-
+	// printf("return file_open(inode)\t\t\t\t- filesys.c:89\n");
 	return file_open (inode);
 }
 

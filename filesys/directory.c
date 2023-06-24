@@ -113,7 +113,7 @@ dir_lookup (const struct dir *dir, const char *name,
 		*inode = inode_open (e.inode_sector);
 	else
 		*inode = NULL;
-
+	// printf("in dir loopjuo indoe:%d\n", *inode == NULL);
 	return *inode != NULL;
 }
 

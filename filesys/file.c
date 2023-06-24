@@ -16,12 +16,15 @@ struct file {
 struct file *
 file_open (struct inode *inode) {
 	struct file *file = calloc (1, sizeof *file);
+	// printf("[fileopen]file is null? %d %d\n", file == NULL, inode == NULL);
 	if (inode != NULL && file != NULL) {
+		// printf("[fileopen]fileopen->if \t\t\t| file.c:21\n");
 		file->inode = inode;
 		file->pos = 0;
 		file->deny_write = false;
 		return file;
 	} else {
+		// printf("[fileopen]fileopen->else \t\t\t| file.c:26\n");
 		inode_close (inode);
 		free (file);
 		return NULL;

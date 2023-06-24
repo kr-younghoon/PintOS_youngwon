@@ -50,7 +50,7 @@ void close(int fd);
 #define MSR_LSTAR 0xc0000082		/* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
 
-struct lock filesys_lock; // 파일 동기화를 위한 전역변수
+ // 파일 동기화를 위한 전역변수
 
 void syscall_init(void) {
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48 |
@@ -169,6 +169,7 @@ int exec(const char *file) {
 
 // 자식 프로세스가 끝날 떄까지 기다린다.
 int wait(int pid) {
+	// printf("[wait] \t\t\t\t| syscall.c:172\n");
 	return process_wait(pid);
 }
 
@@ -186,17 +187,26 @@ bool remove(const char *file) {
 
 // 파일 열기
 int open(const char *file) {
+	// printf("\n[open] start -> check_addr : \t\t\t| syscall.c:189\n");
 	check_address(file);
+	// printf("[open]check_addr -> lock_acq : %s \t\t| syscall.c:191\n", file);
+	lock_acquire(&filesys_lock);
 	struct file *f = filesys_open(file);
+	// printf("[open]if f == NULL \t\t\t| syscall.c:194\n");
 	if (f == NULL) {
+		// printf("f is null \t\t\t| syscall.c:196\n");
 		return -1;
 	}
+	// printf("[open]file dscrptor \t\t\t| syscall.c:199\n");
 	// 파일 디스크립터 생성하기
 	int fd = process_add_file(f);
-
+	// printf("[open]fd todjtd \t\t\t| syscall.c:202\n");
 	if (fd == -1) {
 		file_close(f);
+		// printf("open - file_close(f) \t\t\t| syscall.c:205\n");
 	}
+	lock_release(&filesys_lock);
+	// printf("open out %d \t\t\t\t| syscall.c:207\n\n", fd);
 	return fd;
 }
 

@@ -22,7 +22,7 @@ static const struct page_operations anon_ops = {
 void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
-	swap_disk = NULL;
+	swap_disk = disk_get(1, 1);
 }
 
 /* 이 함수는 처음으로 page→operation에 있는 익명 페이지에 대한 핸들러를 설정하여줍니다. 
@@ -39,17 +39,20 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
+	printf("swap in\n");
 	struct anon_page *anon_page = &page->anon;
 }
 
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
+	printf("swap out\n");
 	struct anon_page *anon_page = &page->anon;
 }
 
 /* Destroy the anonymous page. PAGE will be freed by the caller. */
 static void
 anon_destroy (struct page *page) {
+	
 	struct anon_page *anon_page = &page->anon;
 }
