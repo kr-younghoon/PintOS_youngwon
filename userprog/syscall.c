@@ -37,6 +37,8 @@ void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void close(int fd);
 
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset);
+
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -114,6 +116,9 @@ void syscall_handler(struct intr_frame *f UNUSED) {
 		break;
 	case SYS_CLOSE:
 		close(f->R.rdi);
+	case SYS_MMAP:
+		f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+		break;
 	}
 }
 
@@ -308,4 +313,24 @@ void close(int fd) {
 	}
 	file_close(f);
 	process_close_file(fd); // fdt에서 제거하기
+}
+
+void *
+mmap(void *addr, size_t length, int writable, int fd, off_t offset) {
+	if (!addr || addr != pg_round_down(addr))
+		return NULL;
+	if (offset != pg_round_down(offset))
+		return NULL;
+	if (!is_user_vaddr(addr || !is_user_vaddr(addr + length)))
+		return NULL;
+	if (spt_find_page(&thread_current()->spt, addr))
+		return NULL;
+	
+	struct file *f = process_get_file(fd);
+	if (f == NULL)
+		return NULL;
+	if (file_length(f) == 0 || (int)length <= 0)
+		return NULL;
+	
+	return do_mmap(addr, length, writable, f, offset);
 }
