@@ -339,7 +339,7 @@ supplemental_copy_entry(struct hash_elem *e, void *aux) {
 		vm_do_claim_page(child_p);
 		memcpy(child_p->frame->kva, p->frame->kva, PGSIZE);
 	} else if (type = VM_FILE) {
-		struct file_info *tmp = (struct file_info *)p->file.aux;
+		// struct file_info *tmp = (struct file_info *)p->file.aux;
 
 		vm_alloc_page(VM_FILE, p->va, 1);
 
@@ -347,9 +347,9 @@ supplemental_copy_entry(struct hash_elem *e, void *aux) {
 
 		vm_do_claim_page(child_p);
 
-		struct file_page *file_page = &child_p -> file;
+		// struct file_page *file_page = &child_p -> file;
 
-		file_page->aux = tmp;
+		// file_page->aux = tmp;
 		memcpy(child_p->frame->kva, p->frame->kva, PGSIZE);
 	}
 	// } else { = 예린씨 코드

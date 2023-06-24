@@ -28,6 +28,14 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 	page->operations = &file_ops;
 
 	struct file_page *file_page = &page->file;
+
+	//to do: page struct의 일부 정보(such as 메모리가 백업되는 파일과 관련된 정보)를 업데이트 할 수도 있습니다.
+	struct lazy_load_arg *lazy_load_arg = (struct lazy_load_arg *)page->uninit.aux;
+	file_page->file = lazy_load_arg->file;
+	file_page->ofs = lazy_load_arg->ofs;
+	file_page->read_bytes = lazy_load_arg->read_bytes;
+	file_page->zero_bytes = lazy_load_arg-> zero_bytes;
+	return true;
 }
 
 /* Swap in the page by read contents from the file. */
