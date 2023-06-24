@@ -108,5 +108,14 @@ do_mmap (void *addr, size_t length, int writable,
 
 /* Do the munmap */
 void
-do_munmap (void *addr) {
+do_munmap(void *addr) {
+	struct supplemental_page_table *spt = &thread_current() -> spt;
+	struct page *p = spt_find_page(spt,addr);
+	int count = p->mapped_page_count;
+	for (int i = 0; i < count; i++) {
+		if(p)
+			destroy(p);
+		addr += PGSIZE;
+		p = spt_find_page(spt, addr);
+	}
 }
