@@ -320,6 +320,7 @@ void close(int fd) {
 
 void *
 mmap(void *addr, size_t length, int writable, int fd, off_t offset) {
+	// printf("mmap-spt_find_page\t\t\t| syscall.c:330\n");
 	if (!addr || addr != pg_round_down(addr))
 		return NULL;
 	if (offset != pg_round_down(offset))

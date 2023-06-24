@@ -7,6 +7,7 @@
 static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);
 static void file_backed_destroy (struct page *page);
+static bool lazy_load_segment(struct page *page, void *aux);
 
 /* DO NOT MODIFY this struct */
 static const struct page_operations file_ops = {
@@ -90,7 +91,7 @@ do_mmap (void *addr, size_t length, int writable,
 		lazy_load_arg->zero_bytes = page_zero_bytes;
 
 		if (!vm_alloc_page_with_initializer(VM_FILE, addr, 
-				writable, lazy_load_arg, lazy_load_arg))
+				writable, lazy_load_segment, lazy_load_arg))
 			return NULL;
 		
 		struct page *p = spt_find_page(&thread_current()->spt, start_addr);
@@ -118,4 +119,26 @@ do_munmap(void *addr) {
 		addr += PGSIZE;
 		p = spt_find_page(spt, addr);
 	}
+}
+static bool
+lazy_load_segment(struct page *page, void *aux)
+{
+	// printf("lazy_load_seg in - process.c:709\n");
+	/* TODO: Load the segment from the file */
+	/* TODO: This called when the first page fault occurs on address VA. */
+	/* TODO: VA is available when calling this function. */
+	struct lazy_load_arg *lazy_load_arg = (struct lazy_load_arg *)aux;
+
+	// 1) 파일의 position을 ofs으로 지정한다.
+	file_seek(lazy_load_arg->file, lazy_load_arg->ofs);
+	// 2) 파일을 read_bytes만큼 물리 프레임에 읽어 들인다.
+	if (file_read(lazy_load_arg->file, page->frame->kva, lazy_load_arg->read_bytes) != (int)(lazy_load_arg->read_bytes)) {
+		palloc_free_page(page->frame->kva);
+		// printf("lazy_load_seg false return - process.c:720\n");
+		return false;
+	}
+	// 3) 다 읽은 지점부터 zero_bytes만큼 0으로 채운다.
+	memset(page->frame->kva + lazy_load_arg->read_bytes, 0, lazy_load_arg->zero_bytes);
+	// printf("lazy_load_seg true return - process.c:725\n");
+	return true;
 }
