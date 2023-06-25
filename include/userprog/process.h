@@ -18,6 +18,8 @@ int process_add_file(struct file *f);
 void process_close_file(int fd);
 struct file *process_get_file(int fd);
 
+bool lazy_load_segment(struct page *page, void *aux);
+
 struct vm_entry{
 	struct file *file;
 	off_t ofs;	 		/* 읽어야할 파일 오프셋 */

@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 
 #include "vm/vm.h"
+#include "threads/vaddr.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -39,6 +40,8 @@ void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void close(int fd);
 
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap(void *addr);
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -113,6 +116,15 @@ void syscall_handler(struct intr_frame *f UNUSED) {
 		break;
 	case SYS_CLOSE:
 		close(f->R.rdi);
+	case SYS_MMAP:
+		f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+		break;
+	case SYS_MUNMAP:
+		munmap(f->R.rdi);
+		break;
+	default:
+		exit(-1);
+		break;	
 	}
 }
 
@@ -295,4 +307,25 @@ void close(int fd) {
 	}
 	file_close(f);
 	process_close_file(fd); // fdt에서 제거하기
+}
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset){
+	if (offset % PGSIZE != 0)
+		return NULL;
+	
+	if (!is_user_vaddr(addr || !is_user_vaddr(addr + length)))
+		return NULL;
+	
+	size_t file_size = filesize(fd) < length ? filesize(fd) : length;
+
+	if ((fd >= 2) && length > 0&& (file_size > 0) && addr && (addr == pg_round_down(addr)) && (spt_find_page(&thread_current()->spt, addr) == NULL))
+	{
+		struct file *map_file = process_get_file(fd);
+		if (map_file && file_length(map_file) > 0)
+			return do_mmap(addr, file_size, writable, map_file, offset); // file size 수정
+		
+	}
+	return NULL;
+}
+void munmap(void *addr){
+	do_munmap(addr);
 }

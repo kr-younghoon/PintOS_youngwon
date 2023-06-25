@@ -19,7 +19,6 @@
 #include "threads/vaddr.h"
 #include "intrinsic.h"
 #include "userprog/syscall.h"
-#define VM
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -712,7 +711,7 @@ install_page(void *upage, void *kpage, bool writable)
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-static bool
+bool
 lazy_load_segment(struct page *page, void *aux)
 {
 	/* TODO: Load the segment from the file */
@@ -796,6 +795,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
+/* 초기 스택 세팅 함수 */
 static bool
 setup_stack(struct intr_frame *if_)
 {

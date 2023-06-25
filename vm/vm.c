@@ -18,6 +18,8 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init(&frame_table);
+	lock_init(&frame_table_lock);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -42,6 +44,7 @@ static struct frame *vm_evict_frame (void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
+/* 초기화되지 않은 페이지를 생성하는 함수 */
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
@@ -109,7 +112,8 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 
 void
 spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
-	vm_dealloc_page (page);
+	if (page!=NULL)
+		vm_dealloc_page (page);
 	return true;
 }
 
@@ -128,7 +132,8 @@ static struct frame *
 vm_evict_frame (void) {
 	struct frame *victim UNUSED = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
-
+	if (victim->page)
+		swap_out(victim->page);
 	return NULL;
 }
 
@@ -140,11 +145,11 @@ static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
-	void *vaddr = palloc_get_page(PAL_USER);
-	if (vaddr==NULL)
+	void *vaddr = palloc_get_page(PAL_USER);	// 프레임이 저장될 메모리 할당
+	if (vaddr==NULL)		// 할당할 수 없다 == 꽉 차있어
 		PANIC("todo");	/* page allocation failure */
 	/* 할당 + 초기화 */
-	frame = malloc(sizeof(struct frame));
+	frame = (struct frame *)malloc(sizeof(struct frame));	// malloc은 가상 주소 공간에 할당, palloc을 페이지를 물리공간에 할당
 	frame->kva = vaddr;
 	frame->page = NULL;
 
@@ -165,6 +170,7 @@ vm_handle_wp (struct page *page UNUSED) {
 }
 
 /* Return true on success */
+/* page fault 발생 시, 무조건 실행되는 함수 */
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
@@ -175,7 +181,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	if (is_kernel_vaddr(addr) && !addr)
 		return false;
 
-	if (not_present){
+	if (not_present){	// 물리 메모리에 존재하지 않을 경우 == page fault
 		void *vaddr = pg_round_down(addr);
 		void *rsp;
 		rsp = user ? (void *)f->rsp : (void *)thread_current()->rsp;
@@ -218,7 +224,8 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable);
+	if (!pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable))
+		return false;
 	
 	return swap_in (page, frame->kva);
 }
@@ -242,25 +249,46 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 
 /* Copy supplemental page table from src to dst */
 bool
-supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
+supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, 
 		struct supplemental_page_table *src UNUSED) {
-	hash_apply(&src->hash, supplemental_copy_entry);
-	return true;
-}
-void
-supplemental_copy_entry(struct hash_elem *e, void *aux){
-	struct page *page = hash_entry(e, struct page, hash_elem);		// hash_elem을 가지고 hash_entry를 찾아서 page에 저장
+	struct hash_iterator i; //해시 테이블 내의 위치
+	hash_first(&i, &src->hash); //i를 해시의 첫번째 요소를 가리키도록 초기화
+	while (hash_next(&i)) { // 해시의 다음 요소가 있을 때까지 반복
+		struct page *src_page = hash_entry(hash_cur(&i), struct page, hash_elem);
+		enum vm_type type = src_page->operations->type;
+		void *va = src_page->va;
+		bool writable = src_page->writable;
 
-	if (page->operations->type == VM_UNINIT){
-		vm_alloc_page_with_initializer(page->uninit.type, page->va, 1, page->uninit.init, page->uninit.aux);
-		vm_claim_page(page->va);
-	} else {
-		/* 메모리에는 있는데, disk에는 없는 상태 : VM_ANON */
-		vm_alloc_page(page->operations->type, page->va, 1);
-		struct page *child_page = spt_find_page(&thread_current()->spt, page->va);
-		vm_claim_page(page->va);									// mapping page -> frame
-		memcpy(child_page->frame->kva, page->frame->kva, PGSIZE);	// 공간 할당만 해놓고 copy만 하면된다 disk에도 없기 때문에 초기화 과정이 필요없다
+		if(type == VM_UNINIT) { //초기화되지 않은 페이지인 경우
+			vm_alloc_page_with_initializer(page_get_type(src_page), va, writable, src_page->uninit.init, src_page->uninit.aux);
+		}
+		else if(type == VM_FILE) { //파일 타입일 경우
+			struct vm_entry *vme = (struct vm_entry *)malloc(sizeof(struct vm_entry));
+			vme->file = src_page->file.file;
+			vme->ofs = src_page->file.ofs;
+			vme->read_bytes = src_page->file.read_bytes;
+			vme->zero_bytes = src_page->file.zero_bytes;
+
+			if(!vm_alloc_page_with_initializer(type, va,writable, NULL, vme)) {
+				return false;
+			}
+			struct page *page = spt_find_page(dst, va);
+			file_backed_initializer(page, type, NULL);
+			page->frame = src_page->frame;
+			pml4_set_page(thread_current()->pml4, page->va, src_page->frame->kva, src_page->writable);
+		}
+		else { //익명 페이지일 경우
+			if(!vm_alloc_page(type, va, writable)) {
+				return false;
+			}
+			if(!vm_claim_page(va)) {
+				return false;
+			}
+			struct page *dst_page = spt_find_page(dst, va);
+			memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
+		}
 	}
+	return true;
 }
 /* Free the resource hold by the supplemental page table */
 void

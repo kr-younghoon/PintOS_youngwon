@@ -37,6 +37,8 @@ struct thread;
 
 #define VM_TYPE(type) ((type) & 7)
 
+struct list frame_table;
+struct lock frame_table_lock;
 /* The representation of "page".
  * This is kind of "parent class", which has four "child class"es, which are
  * uninit_page, file_page, anon_page, and page cache (project4).
@@ -49,7 +51,8 @@ struct page {
 	/* Your implementation */ 
 	struct hash_elem hash_elem;
 
-	bool writable;	/* true : r/w , false : read-only */
+	bool writable;			/* true : r/w , false : read-only */
+	int mapped_page_count;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
