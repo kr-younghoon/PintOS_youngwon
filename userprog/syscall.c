@@ -185,8 +185,12 @@ int wait(int pid) {
 
 // 파일 생성
 bool create(const char *file, unsigned initial_size) {
+	lock_acquire(&filesys_lock);
 	check_address(file); // 유저 영역의 주소인지 확인
-	return filesys_create(file, initial_size);
+	// return filesys_create(file, initial_size);
+	bool success = filesys_create(file, initial_size);
+	lock_release(&filesys_lock);
+	return success;
 }
 
 // 파일 삭제
@@ -197,9 +201,11 @@ bool remove(const char *file) {
 
 // 파일 열기
 int open(const char *file) {
+	lock_acquire(&filesys_lock);
 	check_address(file);
 	struct file *f = filesys_open(file);
 	if (f == NULL) {
+		lock_release(&filesys_lock);
 		return -1;
 	}
 	// 파일 디스크립터 생성하기
@@ -208,6 +214,7 @@ int open(const char *file) {
 	if (fd == -1) {
 		file_close(f);
 	}
+	lock_release(&filesys_lock);
 	return fd;
 }
 
