@@ -183,8 +183,11 @@ int wait(int pid) {
 
 // 파일 생성
 bool create(const char *file, unsigned initial_size) {
+	lock_acquire(&filesys_lock);
 	check_address(file); // 유저 영역의 주소인지 확인
-	return filesys_create(file, initial_size);
+	bool succ = filesys_create(file, initial_size);
+	lock_release(&filesys_lock);
+	return succ;
 }
 
 // 파일 삭제
