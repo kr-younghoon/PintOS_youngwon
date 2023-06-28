@@ -112,6 +112,7 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 
 void
 spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
+	hash_delete(&spt->hash, &page->hash_elem);
 	if (page!=NULL)
 		vm_dealloc_page (page);
 	return true;
@@ -122,7 +123,25 @@ static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
-
+	struct thread *curr = thread_current();
+	lock_acquire(&frame_table_lock);
+	for (struct list_elem *f = list_begin(&frame_table); f != list_end(&frame_table); f = list_next(f)) {
+		victim = list_entry(f, struct frame, frame_elem);
+		if(victim->page == NULL) { //현재 프레임에 페이지가 없으므로 희생자로 선택
+			lock_release(&frame_table_lock);
+			return victim;
+		}
+		//PTE에 접근했는지 여부 판단 : 즉 최근에 접급한 적이 있으면
+		if (pml4_is_accessed(curr->pml4, victim->page->va)) {
+			//접근 비트를 0으로 설정
+			pml4_set_accessed(curr->pml4, victim->page->va, 0);
+		}
+		else { //최근에 접근한 적이 없으면 희생자로 선택
+			lock_release(&frame_table_lock);
+			return victim;
+		}
+	}
+	lock_release(&frame_table_lock);
 	return victim;
 }
 
@@ -146,12 +165,22 @@ vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
 	void *vaddr = palloc_get_page(PAL_USER);	// 프레임이 저장될 메모리 할당
-	if (vaddr==NULL)		// 할당할 수 없다 == 꽉 차있어
+	if (vaddr==NULL){		// 할당할 수 없다 == 꽉 차있어
 		PANIC("todo");	/* page allocation failure */
+		//할당받을 수 있는 영역이 없을 경우 희생자 선택
+		frame = vm_evict_frame();
+		memset(frame->kva, 0, PGSIZE);
+		frame->page = NULL;
+		return frame;
+	}
 	/* 할당 + 초기화 */
 	frame = (struct frame *)malloc(sizeof(struct frame));	// malloc은 가상 주소 공간에 할당, palloc을 페이지를 물리공간에 할당
 	frame->kva = vaddr;
 	frame->page = NULL;
+
+	lock_acquire(&frame_table_lock);
+	list_push_back(&frame_table, &frame->frame_elem);
+	lock_release(&frame_table_lock);
 
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);

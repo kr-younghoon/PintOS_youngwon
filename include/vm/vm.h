@@ -39,6 +39,9 @@ struct thread;
 
 struct list frame_table;
 struct lock frame_table_lock;
+
+struct list swap_table;
+struct lock swap_table_lock;
 /* The representation of "page".
  * This is kind of "parent class", which has four "child class"es, which are
  * uninit_page, file_page, anon_page, and page cache (project4).
@@ -70,8 +73,14 @@ struct page {
 struct frame {
 	void *kva;			// kernel virtual address
 	struct page *page;
+	struct list_elem frame_elem;
 };
 
+struct slot{
+	uint32_t slot_num;
+	struct list_elem swap_elem;
+	struct page *page;
+};
 /* The function table for page operations.
  * This is one way of implementing "interface" in C.
  * Put the table of "method" into the struct's member, and

@@ -5,7 +5,7 @@ struct page;
 enum vm_type;
 
 struct anon_page {
-    void *aux;
+    uint32_t slot_num;  // swap out
 };
 
 void vm_anon_init (void);
