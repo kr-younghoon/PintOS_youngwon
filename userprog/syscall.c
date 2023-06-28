@@ -205,6 +205,8 @@ int open(const char *file) {
 	struct file *f = filesys_open(file);
 	// printf("[open]if f == NULL \t\t\t| syscall.c:194\n");
 	if (f == NULL) {
+		lock_release(&filesys_lock);
+
 		// printf("f is null \t\t\t| syscall.c:196\n");
 		return -1;
 	}
