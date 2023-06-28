@@ -319,16 +319,16 @@ void *mmap(void *addr, size_t length, int writable, int fd, off_t offset){
 	if (offset % PGSIZE != 0)
 		return NULL;
 	
-	if (!is_user_vaddr(addr || !is_user_vaddr(addr + length)))
+	if (!is_user_vaddr(addr) || !is_user_vaddr(addr + length))
 		return NULL;
 	
-	size_t file_size = filesize(fd) < length ? filesize(fd) : length;
+	// size_t file_size = filesize(fd) < length ? filesize(fd) : length;
 
-	if ((fd >= 2) && length > 0&& (file_size > 0) && addr && (addr == pg_round_down(addr)) && (spt_find_page(&thread_current()->spt, addr) == NULL))
+	if (length > 0 && addr && addr == pg_round_down(addr) && !spt_find_page(&thread_current()->spt, addr))
 	{
 		struct file *map_file = process_get_file(fd);
-		if (map_file && file_length(map_file) > 0)
-			return do_mmap(addr, file_size, writable, map_file, offset); // file size 수정
+		if (map_file && file_length(map_file) > 0 && (int)length > 0)
+			return do_mmap(addr, length, writable, map_file, offset); // file size 수정
 		
 	}
 	return NULL;
