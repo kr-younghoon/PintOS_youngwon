@@ -153,7 +153,7 @@ vm_evict_frame (void) {
 	/* TODO: swap out the victim and return the evicted frame. */
 	if (victim->page)
 		swap_out(victim->page);
-	return NULL;
+	return victim;
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
@@ -166,12 +166,11 @@ vm_get_frame (void) {
 	/* TODO: Fill this function. */
 	void *vaddr = palloc_get_page(PAL_USER);	// 프레임이 저장될 메모리 할당
 	if (vaddr==NULL){		// 할당할 수 없다 == 꽉 차있어
-		PANIC("todo");	/* page allocation failure */
 		//할당받을 수 있는 영역이 없을 경우 희생자 선택
-		frame = vm_evict_frame();
-		memset(frame->kva, 0, PGSIZE);
-		frame->page = NULL;
-		return frame;
+		struct frame *victim = vm_evict_frame();
+		// memset(frame->kva, 0, PGSIZE);
+		victim->page = NULL;
+		return victim;
 	}
 	/* 할당 + 초기화 */
 	frame = (struct frame *)malloc(sizeof(struct frame));	// malloc은 가상 주소 공간에 할당, palloc을 페이지를 물리공간에 할당
@@ -255,7 +254,7 @@ vm_do_claim_page (struct page *page) {
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	if (!pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable))
 		return false;
-	
+
 	return swap_in (page, frame->kva);
 }
 

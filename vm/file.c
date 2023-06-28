@@ -40,6 +40,8 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
+	if (page == NULL)
+		return false;
 	return lazy_load_segment(page, file_page);
 }
 
@@ -48,12 +50,13 @@ static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
 	struct thread *t = thread_current();
+	if (page == NULL)
+		return false;
 	if(pml4_is_dirty(t->pml4, page->va)) { 
 		//dirty bit = 1일 경우 (파일이 변경된 상태) 변경사항을 파일에 저장하기
 		file_write_at(file_page->file, page->frame->kva, file_page->read_bytes, file_page->ofs);
+		pml4_set_dirty(thread_current()->pml4, page->va, 0);
 	}
-	//dirty bit = 0
-	pml4_set_dirty(thread_current()->pml4, page->va, 0);
 	page->frame->page = NULL;
 	page->frame = NULL;
 	pml4_clear_page(t->pml4, page->va);
@@ -66,8 +69,8 @@ file_backed_destroy (struct page *page) {
 	if (pml4_is_dirty(thread_current()->pml4, page->va))
 	{	// 변경사항 파일에 저장
 		file_write_at(file_page->file, page->va, file_page->read_bytes, file_page->ofs);
+		pml4_set_dirty(thread_current()->pml4, page->va, 0);
 	}
-	pml4_set_dirty(thread_current()->pml4, page->va, 0);
 	pml4_clear_page(thread_current()->pml4, page->va);
 }
 
