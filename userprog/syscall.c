@@ -211,9 +211,9 @@ int open(const char *file) {
 		return -1;
 	}
 	// printf("[open]file dscrptor \t\t\t| syscall.c:199\n");
-	// 파일 디스크립터 생성하기
+	// 파일 디스크립터 생성하기 2
 	int fd = process_add_file(f);
-	// printf("[open]fd todjtd \t\t\t| syscall.c:202\n");
+	// printf("[open]fd todjtd새엇ㅇ 이게 뭐야 ㅅㅂ \t\t\t| syscall.c:202\n");
 	if (fd == -1) {
 		file_close(f);
 		// printf("open - file_close(f) \t\t\t| syscall.c:205\n");
@@ -325,12 +325,12 @@ void close(int fd) {
 
 void *
 mmap(void *addr, size_t length, int writable, int fd, off_t offset) {
-	// printf("mmap-spt_find_page\t\t\t| syscall.c:330\n");
+	// printf("[mmap] start \t\t\t| [syscall.c:327]\n");
 	if (!addr || addr != pg_round_down(addr))
 		return NULL;
 	if (offset != pg_round_down(offset))
 		return NULL;
-	if (!is_user_vaddr(addr || !is_user_vaddr(addr + length)))
+	if (!is_user_vaddr(addr) || !is_user_vaddr(addr + length))
 		return NULL;
 	if (spt_find_page(&thread_current()->spt, addr))
 		return NULL;
@@ -340,11 +340,13 @@ mmap(void *addr, size_t length, int writable, int fd, off_t offset) {
 		return NULL;
 	if (file_length(f) == 0 || (int)length <= 0)
 		return NULL;
-	
+	// printf("[mmap] end \t\t\t| [syscall.c:327]\n");
 	return do_mmap(addr, length, writable, f, offset);
 }
 
 void
 munmap(void *addr) {
+	// printf("[m-unmap] start \t\t\t| [syscall.c:347]\n");
 	do_munmap(addr);
+	// printf("[m-unmap] end \t\t\t| [syscall.c:347]\n");
 }
